@@ -1222,3 +1222,43 @@ Calculates the Euclidean (L2) distance between two vectors.
 Example:
 
 L2_DISTANCE(vector1, vector2)
+
+### VECTOR_REDUCE
+
+```VECTOR_REDUCE(vector_field, target_dimension, method)```
+
+Generic vector dimension reduction function that supports multiple reduction methods.
+
+**Parameters:**
+- `vector_field`: The vector field to reduce (VECTOR type)
+- `target_dimension`: The target dimension (INTEGER, must be smaller than source dimension)
+- `method`: The reduction method (STRING):
+  - **'TRUNCATE'**: Truncates the vector by keeping only the first N elements. This is the simplest and fastest dimension reduction method, but may lose important information in the truncated dimensions.
+  - **'RANDOM_PROJECTION'**: Uses Gaussian random projection with normally distributed random matrix. This method preserves relative distances between vectors while reducing dimensionality, following the Johnson-Lindenstrauss lemma.
+  - **'SPARSE_RANDOM_PROJECTION'**: Uses sparse random projection where matrix elements are mostly zero (±√3, 0). This is more computationally efficient than regular random projection while maintaining similar distance preservation properties.
+
+**Returns:** VECTOR type with reduced dimensions
+
+**Example:**
+```sql
+SELECT id, VECTOR_REDUCE(embedding, 256, 'TRUNCATE') as reduced_embedding FROM table
+SELECT id, VECTOR_REDUCE(embedding, 128, 'RANDOM_PROJECTION') as reduced_embedding FROM table
+SELECT id, VECTOR_REDUCE(embedding, 64, 'SPARSE_RANDOM_PROJECTION') as reduced_embedding FROM table
+```
+
+### VECTOR_NORMALIZE
+
+```VECTOR_NORMALIZE(vector_field)```
+
+Normalizes a vector to unit length (magnitude = 1). This is useful for computing cosine similarity.
+
+**Parameters:**
+- `vector_field`: The vector field to normalize (VECTOR type)
+
+**Returns:** VECTOR type - the normalized vector
+
+**Example:**
+```sql
+SELECT id, VECTOR_NORMALIZE(embedding) as normalized_embedding FROM table
+```
+

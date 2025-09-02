@@ -212,6 +212,9 @@ public class ZetaSQLFunction {
     public static final String VECTOR_NORM = "VECTOR_NORM";
     public static final String INNER_PRODUCT = "INNER_PRODUCT";
 
+    public static final String VECTOR_REDUCE = "VECTOR_REDUCE";
+    public static final String VECTOR_NORMALIZE = "VECTOR_NORMALIZE";
+
     private final SeaTunnelRowType inputRowType;
 
     private final ZetaSQLType zetaSQLType;
@@ -619,6 +622,11 @@ public class ZetaSQLFunction {
                 return VectorFunction.vectorNorm(args);
             case INNER_PRODUCT:
                 return VectorFunction.innerProduct(args);
+            case VECTOR_REDUCE:
+                return VectorFunction.vectorReduce(
+                        args.get(0), (Integer) args.get(1), (String) args.get(2));
+            case VECTOR_NORMALIZE:
+                return VectorFunction.vectorNormalize(args.get(0));
             default:
                 for (ZetaUDF udf : udfList) {
                     if (udf.functionName().equalsIgnoreCase(functionName)) {
