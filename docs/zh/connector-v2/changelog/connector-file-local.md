@@ -2,6 +2,7 @@
 
 | Change | Commit | Version |
 | --- | --- | --- |
+|[Feature][File] Add markdown parser #9714|https://github.com/apache/seatunnel/commit/8b3c07844| dev |
 |[Improve][Connector-V2] File Source Support filtering files by last modified time.  (#9526)|https://github.com/apache/seatunnel/commit/cde4c3d410|2.3.12|
 |[Feature][Format] Improve maxwell_json,canal_json,debezium_json format add ts_ms and table (#9701)|https://github.com/apache/seatunnel/commit/fb8444b946|2.3.12|
 |[Improve][Connector-V2] Add customizable row delimiter support for text file processing (#9608)|https://github.com/apache/seatunnel/commit/7898e62e01|2.3.12|

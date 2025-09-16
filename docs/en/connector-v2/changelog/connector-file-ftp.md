@@ -2,6 +2,7 @@
 
 | Change | Commit | Version |
 | --- | --- | --- |
+|[Feature][File] Add markdown parser #9714|https://github.com/apache/seatunnel/commit/8b3c07844| dev |
 |[Improve][Connector-V2] Add customizable row delimiter support for text file processing (#9608)|https://github.com/apache/seatunnel/commit/7898e62e01|2.3.12|
 |[Improve][Connector-V2] Support maxcompute sink writer with timestamp field type (#9234)|https://github.com/apache/seatunnel/commit/a513c495e3|2.3.12|
 |[Improve][Connector-V2] Add remote host verification option for FTP data channels (#9324)|https://github.com/apache/seatunnel/commit/019d69d10a|2.3.11|
