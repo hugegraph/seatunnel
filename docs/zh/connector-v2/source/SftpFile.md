@@ -29,6 +29,7 @@ import ChangeLog from '../changelog/connector-file-sftp.md';
   - [x] excel
   - [x] xml
   - [x] binary
+  - [x] markdown
 
 ## 描述
 
@@ -107,6 +108,8 @@ import ChangeLog from '../changelog/connector-file-sftp.md';
 | binary_chunk_size         | int     | 否    | 1024                | 仅在file_format_type为binary时使用。读取二进制文件的块大小（以字节为单位）。默认为1024字节。较大的值可能会提高大文件的性能，但会使用更多内存。                                                                                                                                                               |
 | binary_complete_file_mode | boolean | 否    | false               | 仅在file_format_type为binary时使用。是否将完整文件作为单个块读取，而不是分割成块。启用时，整个文件内容将一次性读入内存。默认为false。                                                                                                                                                                   |
 | common-options            |         | 否    | -                   | 数据源插件通用参数，请参考[数据源通用选项](../source-common-options.md)了解详情。                                                                                                                                                                                           |
+| file_filter_modified_start  | string  | 否    | -                   | 按照最后修改时间过滤文件。 要过滤的开始时间(包括改时间),时间格式是：`yyyy-MM-dd HH:mm:ss`                                                                                  |
+| file_filter_modified_end    | string  | 否    | -                   | 按照最后修改时间过滤文件。 要过滤的结束时间(不包括改时间),时间格式是：`yyyy-MM-dd HH:mm:ss`                                                                                                                   |
 
 ### file_filter_pattern [string]
 
@@ -164,7 +167,7 @@ import ChangeLog from '../changelog/connector-file-sftp.md';
 ### file_format_type [string]
 
 文件类型，支持以下文件类型：
-`text` `csv` `parquet` `orc` `json` `excel` `xml` `binary`
+`text` `csv` `parquet` `orc` `json` `excel` `xml` `binary` `markdown`
 如果您将文件类型指定为`json`，您还应该指定schema选项来告诉连接器如何将数据解析为您想要的行。
 例如：
 上游数据如下：
@@ -229,6 +232,20 @@ schema {
 
 如果您将文件类型指定为`binary`，SeaTunnel可以同步任何格式的文件，
 例如压缩包、图片等。简而言之，任何文件都可以同步到目标位置。
+
+如果您将文件类型指定为 `markdown`，SeaTunnel 可以解析 markdown 文件并提取结构化数据。
+markdown 解析器提取各种元素，包括标题、段落、列表、代码块、表格等。
+每个元素都转换为具有以下架构的行：
+- `element_id`：元素的唯一标识符
+- `element_type`：元素类型（Heading、Paragraph、ListItem 等）
+- `heading_level`：标题级别（1-6，非标题元素为 null）
+- `text`：元素的文本内容
+- `page_number`：页码（默认：1）
+- `position_index`：文档中的位置索引
+- `parent_id`：父元素的 ID
+- `child_ids`：子元素 ID 的逗号分隔列表
+
+注意：Markdown 格式仅支持读取，不支持写入。
 在此要求下，您需要确保源和接收器同时使用`binary`格式进行文件同步。
 
 ### compress_codec [string]
