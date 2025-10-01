@@ -72,11 +72,11 @@ seatunnel-connectors-v2/
     │   │   ├── GraphDataMapper.java          # 数据映射接口
     │   │   ├── VertexMapper.java             # 顶点映射
     │   │   └── EdgeMapper.java               # 边映射
-    │   ├── serializer/
-    │   │   ├── RowToVertexConverter.java     # 行到顶点转换
-    │   │   └── RowToEdgeConverter.java       # 行到边转换
     │   ├── state/
+    │   │   ├── HugeGraphCommitInfo.java      # 提交信息
     │   │   └── HugeGraphSinkState.java       # 状态管理
+    │   ├── Validator/
+    │   │   └── HugeGraphValidator.java      # 提交信息
     │   └── exception/
     │       └── HugeGraphConnectorException.java
     └── src/test/java/...                     # 测试代码
@@ -213,30 +213,38 @@ stateDiagram-v2
     [*] --> ReceiveRow: 接收 SeaTunnelRow
     ReceiveRow --> CheckRowKind: 检查 RowKind
     
-    CheckRowKind --> INSERT: INSERT
-    CheckRowKind --> UPDATE: UPDATE_AFTER
+    CheckRowKind --> INSERT: INSERT/ UPDATE_AFTER
     CheckRowKind --> DELETE: DELETE/UPDATE_BEFORE
     
     INSERT --> MapToGraph: 映射为图元素
-    UPDATE --> MapToGraph: 映射为图元素
-    DELETE --> CheckType: 检查元素类型
+    DELETE --> ExtractID: 映射为图元素id
     
     MapToGraph --> AddToBuffer: 加入缓冲区
+    ExtractID --> AddToBuffer: 加入缓冲区
     AddToBuffer --> CheckFlush: 检查是否触发写入
     
-    CheckType --> DeleteVertex: 顶点
-    CheckType --> DeleteEdge: 边
+    CheckFlush --> BatchWrite: 批量写入
+    CheckFlush --> Wait: 继续等待
+    Wait --> CheckFlush: 检测触发
+
+    BatchWrite --> CheckType: 操作检测
+
+    CheckType --> WriteVertex: 插入顶点
+    CheckType --> WriteEdge: 插入边
+    CheckType --> DeleteVertex: 删除顶点
+    CheckType --> DeleteEdge: 删除边
+
+    WriteVertex --> DirectWrite: 直接插入
+    WriteEdge --> DirectWrite: 直接插入
     
     DeleteVertex --> CascadeDelete: 级联删除边
     CascadeDelete --> DeleteVertexOnly: 删除顶点
     DeleteEdge --> DirectDelete: 直接删除
     
-    CheckFlush --> BatchWrite: 批量写入
-    CheckFlush --> Wait: 继续等待
-    
-    BatchWrite --> [*]: 完成
+    DirectWrite --> [*]: 完成
     DeleteVertexOnly --> [*]: 完成
     DirectDelete --> [*]: 完成
+
 ```
 
 ## 错误处理

@@ -35,13 +35,14 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
   - 添加 SeaTunnel API 依赖
   - 满足需求 1.1, 1.2（SeaTunnel v2 规范，HugeGraph 1.5 支持）
 
-- [ ] **1.2 实现基础配置选项类**
+- [x] **1.2 实现基础配置选项类**
   - 创建 `HugeGraphOptions.java`，定义所有配置选项常量
   - 实现连接配置选项（host, port, graph_name, graph_space, username, password）
   - 实现映射配置选项（mapping_type, vertex_label, edge_label 等）
-  - 满足需求 7.1, 7.2（HOCON/JSON 配置，连接参数）
+  - 满足需求 7.1, 7.2（
+  - ，连接参数）
 
-- [ ] **1.3 编写配置选项单元测试**
+- [x] **1.3 编写配置选项单元测试**
   - 测试必需参数验证
   - 测试可选参数默认值
   - 测试条件参数验证
@@ -49,21 +50,21 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 2. 工厂类和主体 Sink 实现
 
-- [ ] **2.1 实现 HugeGraphSinkFactory**
+- [x] **2.1 实现 HugeGraphSinkFactory**
   - 创建 `HugeGraphSinkFactory.java`，实现 `TableSinkFactory` 接口
   - 添加 `@AutoService(Factory.class)` 注解
   - 实现 `factoryIdentifier()` 返回 "HugeGraph"
   - 实现 `optionRule()` 定义参数规则
   - 满足需求 1.1, 7.4（连接器规范，配置验证）
 
-- [ ] **2.2 实现 HugeGraphSink 主类**
+- [x] **2.2 实现 HugeGraphSink 主类**
   - 创建 `HugeGraphSink.java`，继承 `AbstractSimpleSink`
   - 实现 `SupportMultiTableSink` 接口
   - 实现 `createWriter()` 方法
   - 实现 `getWriteCatalogTable()` 方法
   - 满足需求 1.3, 1.5（数据流处理，多图空间支持）
 
-- [ ] **2.3 创建配置管理类**
+- [x] **2.3 创建配置管理类**
   - 创建 `HugeGraphSinkConfig.java` 管理所有配置
   - 创建 `MappingConfig.java` 管理映射相关配置
   - 实现配置解析和验证逻辑
@@ -71,27 +72,27 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 3. 数据映射器实现
 
-- [ ] **3.1 创建映射器接口和基类**
+- [x] **3.1 创建映射器接口和基类**
   - 创建 `GraphDataMapper.java` 接口
   - 定义 `map(SeaTunnelRow)` 方法
   - 定义 `extractId(SeaTunnelRow)` 方法
   - 满足需求 3.3, 3.4（ID 映射）
 
-- [ ] **3.2 实现顶点映射器**
+- [x] **3.2 实现顶点映射器**
   - 创建 `VertexMapper.java`
   - 实现单表到单个 VertexLabel 映射
   - 实现单表到多个 VertexLabel 映射
   - 实现 PRIMARY_KEY 和 CUSTOMIZE ID 策略
   - 满足需求 3.1, 3.2, 3.3, 3.4
 
-- [ ] **3.3 实现边映射器**
+- [x] **3.3 实现边映射器**
   - 创建 `EdgeMapper.java`
   - 实现单表字段到源/目标顶点映射
   - 实现关联表到源/目标顶点映射
   - 实现边方向配置（"a,b" 表示 a→b）
   - 满足需求 3.5, 3.6, 3.7
 
-- [ ] **3.4 编写映射器单元测试**
+- [x] **3.4 编写映射器单元测试**
   - 测试顶点 ID 生成逻辑
   - 测试边的源/目标提取
   - 测试属性映射
@@ -99,13 +100,13 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 4. HugeGraph 客户端封装
 
-- [ ] **4.1 创建 HugeGraph 客户端管理器**
+- [x] **4.1 创建 HugeGraph 客户端管理器**
   - 创建 `HugeGraphClientManager.java`
   - 实现连接池管理
   - 实现客户端初始化和关闭
   - 满足需求 9.3（资源使用可配置）
 
-- [ ] **4.2 实现写入客户端封装**
+- [x] **4.2 实现写入客户端封装**
   - 创建 `HugeGraphWriteClient.java`
   - 实现 `writeVertex()` 方法
   - 实现 `writeEdge()` 方法
@@ -113,7 +114,7 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
   - 实现 `deleteEdge()` 方法
   - 满足需求 1.3（写入 HugeGraph）
 
-- [ ] **4.3 实现级联删除逻辑**
+- [x] **4.3 实现级联删除逻辑**
   - 在 `HugeGraphWriteClient` 中实现 `deleteVertexWithEdges()` 方法
   - 先查询并删除所有关联边
   - 再删除顶点本身
@@ -139,21 +140,21 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 6. Writer 核心实现
 
-- [ ] **6.1 实现 HugeGraphSinkWriter 基础框架**
+- [x] **6.1 实现 HugeGraphSinkWriter 基础框架**
   - 创建 `HugeGraphSinkWriter.java`
   - 实现 `SinkWriter` 接口
   - 初始化客户端和映射器
   - 实现 `close()` 方法确保资源释放
   - 满足需求 1.1, 1.3
 
-- [ ] **6.2 实现 CDC 事件处理**
+- [x] **6.2 实现 CDC 事件处理**
   - 实现 `write(SeaTunnelRow)` 方法
   - 根据 RowKind 分发到不同处理方法
   - 实现 `handleUpsert()` 处理 INSERT/UPDATE_AFTER
   - 实现 `handleDelete()` 处理 DELETE/UPDATE_BEFORE
   - 满足需求 2.1-2.6（CDC 事件处理）
 
-- [ ] **6.3 实现批量写入缓冲区**
+- [x] **6.3 实现批量写入缓冲区**
   - 创建 `BatchBuffer` 类管理缓冲区
   - 实现基于记录数的触发（默认 500 条）
   - 实现基于时间窗口的触发（默认 5 秒）
