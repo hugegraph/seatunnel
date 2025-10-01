@@ -8,14 +8,14 @@ import ChangeLog from '../changelog/connector-paimon.md';
 
 Read data from Apache Paimon.
 
-### Comparison between Seatunnel and Paimon vsrsion
+### Comparison between SeaTunnel and Paimon version
 
 | Seatunnel Version | Paimon Version   |
 |-------------------|------------------|
 | 2.3.2  -  2.3.3   | 0.4-SNAPSHOT     |
 | 2.3.4             | 0.6-SNAPSHOT     |
 | 2.3.5  -  2.3.11  | 0.7.0-incubating |
-| 2.3.12            | 1.1.1            |
+| 2.3.12  - 2.3.13  | 1.1.1            |
 
 ### Key Considerations for Upgrading Paimon from `0.7.0-incubating` to `1.1.1`
 
@@ -46,19 +46,20 @@ Read data from Apache Paimon.
 
 ## Options
 
-| name                    |  type  | required | default value |
-|-------------------------|--------|----------|---------------|
-| warehouse               | String | Yes      | -             |
-| catalog_type            | String | No       | filesystem    |
-| catalog_uri             | String | No       | -             |
-| database                | String | Yes      | -             |
-| table                   | String | Yes      | -             |
-| user                    | String | No       | -             |
-| password                | String | No      | -             |
-| hdfs_site_path          | String | No       | -             |
-| query                   | String | No       | -             |
-| paimon.hadoop.conf      | Map    | No       | -             |
-| paimon.hadoop.conf-path | String | No       | -             |
+| name                    | type     | required       | default value |
+|-------------------------|----------|----------------|---------------|
+| warehouse               | String   | Yes            | -             |
+| catalog_type            | String   | No             | filesystem    |
+| catalog_uri             | String   | No             | -             |
+| database                | String   | Yes            | -             |
+| table                   | String   | no             | -             |
+| table_list              | array    | no             | -             |
+| user                    | String   | No             | -             |
+| password                | String   | No             | -             |
+| hdfs_site_path          | String   | No             | -             |
+| query                   | String   | No             | -             |
+| paimon.hadoop.conf      | Map      | No             | -             |
+| paimon.hadoop.conf-path | String   | No             | -             |
 
 ### warehouse [string]
 
@@ -79,6 +80,10 @@ The database you want to access
 ### table [string]
 
 The table you want to access
+
+### table_list [array]
+
+The list of tables to be read, you can use this configuration instead of `table`
 
 ### hdfs_site_path [string]
 
@@ -131,6 +136,27 @@ source {
      database = "default"
      table = "st_test"
    }
+}
+```
+
+### Multiple tables
+
+```hocon
+source {
+  Paimon {
+    warehouse = "/tmp/paimon"
+    database = "default"
+    table_list = [
+      {
+        table = "table1"
+        query = "select * from table1 where id > 100"
+      },
+      {
+        table = "table2"
+        query = "select * from table2 where id > 100"
+      }
+    ]
+  }
 }
 ```
 
