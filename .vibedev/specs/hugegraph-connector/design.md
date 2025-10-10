@@ -47,7 +47,7 @@ graph TB
     Factory --> SinkImpl
     SinkImpl --> Writer
     Writer --> Mapper
-    Writer --> Client
+    Mapper --> Client
     Client --> GraphDB
 ```
 
@@ -76,7 +76,7 @@ seatunnel-connectors-v2/
     │   │   ├── HugeGraphCommitInfo.java      # 提交信息
     │   │   └── HugeGraphSinkState.java       # 状态管理
     │   ├── Validator/
-    │   │   └── HugeGraphValidator.java      # 提交信息
+    │   │   └── HugeGraphValidator.java      # 验证信息
     │   └── exception/
     │       └── HugeGraphConnectorException.java
     └── src/test/java/...                     # 测试代码

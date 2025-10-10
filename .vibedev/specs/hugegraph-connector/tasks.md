@@ -43,6 +43,7 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
   - ，连接参数）
 
 - [x] **1.3 编写配置选项单元测试**
+  - TODO 实际配置文件测试（常见报错）
   - 测试必需参数验证
   - 测试可选参数默认值
   - 测试条件参数验证
@@ -100,14 +101,13 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 4. HugeGraph 客户端封装
 
-- [x] **4.1 创建 HugeGraph 客户端管理器**
-  - 创建 `HugeGraphClientManager.java`
-  - 实现连接池管理
+- [x] **4.1 创建 HugeGraph 客户端**
+  - 创建 `HugeGraphClient.java`
   - 实现客户端初始化和关闭
   - 满足需求 9.3（资源使用可配置）
 
-- [x] **4.2 实现写入客户端封装**
-  - 创建 `HugeGraphWriteClient.java`
+- [x] **4.2 实现Client客户端封装**
+  - 创建 `HugeGraphClient.java`
   - 实现 `writeVertex()` 方法
   - 实现 `writeEdge()` 方法
   - 实现 `deleteVertex()` 方法
@@ -115,20 +115,20 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
   - 满足需求 1.3（写入 HugeGraph）
 
 - [x] **4.3 实现级联删除逻辑**
-  - 在 `HugeGraphWriteClient` 中实现 `deleteVertexWithEdges()` 方法
+  - 在 `HugeGraphClient` 中实现 `deleteVertexWithEdges()` 方法
   - 先查询并删除所有关联边
   - 再删除顶点本身
   - 满足需求 2.5（级联删除）
 
 ## 5. Schema 验证实现
 
-- [ ] **5.1 创建 Schema 验证器**
+- [x] **5.1 创建 Schema 验证器**
   - 创建 `SchemaValidator.java`
   - 实现 VertexLabel 存在性验证
   - 实现 EdgeLabel 存在性验证
   - 满足需求 4.1, 4.2
 
-- [ ] **5.2 实现数据类型兼容性验证**
+- [x] **5.2 实现数据类型兼容性验证**
   - 验证源数据类型与目标 schema 类型兼容
   - 实现详细的错误信息报告
   - 满足需求 4.3, 4.4
@@ -171,7 +171,7 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 7. 错误处理和重试机制
 
-- [ ] **7.1 实现重试机制**
+- [x] **7.1 实现重试机制**
   - 创建 `RetryableOperation` 工具类
   - 实现指数退避重试策略
   - 配置默认重试 3 次
