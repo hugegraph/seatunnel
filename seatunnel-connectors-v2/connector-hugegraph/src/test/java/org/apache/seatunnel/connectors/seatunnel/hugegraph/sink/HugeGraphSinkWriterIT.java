@@ -9,8 +9,8 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 
 import org.apache.hugegraph.driver.HugeClient;
-import org.apache.hugegraph.structure.graph.Vertex;
 import org.apache.hugegraph.structure.constant.IdStrategy;
+import org.apache.hugegraph.structure.graph.Vertex;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -134,7 +134,8 @@ public class HugeGraphSinkWriterIT {
         // Verify using REST API
         Map<String, Object> properties = new HashMap<>();
         properties.put("name", "marko");
-        List<Vertex> vertices = hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
+        List<Vertex> vertices =
+                hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
         assertEquals(1, vertices.size());
         assertEquals(29, vertices.get(0).property("age"));
     }
@@ -171,7 +172,8 @@ public class HugeGraphSinkWriterIT {
         // Verify using REST API
         Map<String, Object> properties = new HashMap<>();
         properties.put("name", "vadas");
-        List<Vertex> vertices = hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
+        List<Vertex> vertices =
+                hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
         assertEquals(1, vertices.size());
         assertEquals(28, vertices.get(0).property("age"));
     }
@@ -203,7 +205,8 @@ public class HugeGraphSinkWriterIT {
         // Verify using REST API
         Map<String, Object> properties = new HashMap<>();
         properties.put("name", "josh");
-        List<Vertex> vertices = hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
+        List<Vertex> vertices =
+                hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
         assertTrue(vertices.isEmpty(), "Vertex should have been deleted");
     }
 }
