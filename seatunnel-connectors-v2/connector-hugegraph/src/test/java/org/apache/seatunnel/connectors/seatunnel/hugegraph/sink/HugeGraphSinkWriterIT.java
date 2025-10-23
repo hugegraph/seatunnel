@@ -8,8 +8,8 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkC
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 
-import org.apache.hugegraph.driver.GremlinManager;
 import org.apache.hugegraph.driver.HugeClient;
+import org.apache.hugegraph.structure.graph.Vertex;
 import org.apache.hugegraph.structure.constant.IdStrategy;
 
 import org.junit.jupiter.api.AfterAll;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers
 public class HugeGraphSinkWriterIT {
@@ -47,7 +47,6 @@ public class HugeGraphSinkWriterIT {
                     });
 
     private static HugeClient hugeClient;
-    private static GremlinManager gremlinManager;
 
     @Container
     private static final GenericContainer<?> HUGE_GRAPH_CONTAINER =
@@ -60,10 +59,8 @@ public class HugeGraphSinkWriterIT {
     public static void setup() {
         String host = HUGE_GRAPH_CONTAINER.getHost();
         Integer port = HUGE_GRAPH_CONTAINER.getMappedPort(8080);
-        Integer gremlinPort = HUGE_GRAPH_CONTAINER.getMappedPort(8182);
-        String url = String.format("http://%s:%d", "127.0.0.1", 8080);
+        String url = String.format("http://%s:%d", host, port);
         hugeClient = HugeClient.builder(url, GRAPH_NAME).build();
-        gremlinManager = hugeClient.gremlin();
         setupSchema();
     }
 
@@ -76,8 +73,14 @@ public class HugeGraphSinkWriterIT {
 
     @BeforeEach
     public void clearGraph() {
-        // Clear all vertices and edges before each test
-        gremlinManager.gremlin("g.V().drop().iterate()").execute();
+        // Clear all vertices and edges before each test using GraphsManager.clearGraph()
+        try {
+            hugeClient.graphs().clearGraph(GRAPH_NAME, "I'm sure to delete all data");
+            // After clearing, need to recreate schema
+            setupSchema();
+        } catch (Exception e) {
+            // Ignore errors during clear
+        }
     }
 
     private static void setupSchema() {
@@ -91,13 +94,20 @@ public class HugeGraphSinkWriterIT {
                 .properties("name", "age")
                 .ifNotExist()
                 .create();
-        hugeClient.schema().edgeLabel("knows").properties("name", "age").ifNotExist().create();
+        hugeClient
+                .schema()
+                .edgeLabel("knows")
+                .sourceLabel(VERTEX_LABEL_PERSON)
+                .targetLabel(VERTEX_LABEL_PERSON)
+                .properties("name", "age")
+                .ifNotExist()
+                .create();
     }
 
     private HugeGraphSinkWriter createSinkWriter(SchemaConfig schemaConfig) throws IOException {
         HugeGraphSinkConfig config = new HugeGraphSinkConfig();
-        config.setHost("127.0.0.1");
-        config.setPort(8080);
+        config.setHost(HUGE_GRAPH_CONTAINER.getHost());
+        config.setPort(HUGE_GRAPH_CONTAINER.getMappedPort(8080));
         config.setGraphName(GRAPH_NAME);
         config.setSchemaConfig(schemaConfig);
         return new HugeGraphSinkWriter(config, SEATUNNEL_ROW_TYPE);
@@ -121,22 +131,21 @@ public class HugeGraphSinkWriterIT {
 
         }
 
-        List<Object> results =
-                gremlinManager
-                        .gremlin(
-                                "g.V().hasLabel('person_for_test').has('name', 'marko').values('age')")
-                        .execute()
-                        .data();
-        assertEquals(1, results.size());
-        assertEquals(29, ((Number) results.get(0)).intValue());
+        // Verify using REST API
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("name", "marko");
+        List<Vertex> vertices = hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
+        assertEquals(1, vertices.size());
+        assertEquals(29, vertices.get(0).property("age"));
     }
 
     @Test
     public void testUpdate() throws IOException {
-        // First, insert a vertex
-        gremlinManager
-                .gremlin("g.addV('person_for_test').property('name', 'vadas').property('age', 27)")
-                .execute();
+        // First, insert a vertex using REST API
+        Vertex vadas = new Vertex(VERTEX_LABEL_PERSON);
+        vadas.property("name", "vadas");
+        vadas.property("age", 27);
+        hugeClient.graph().addVertex(vadas);
 
         MappingConfig mappingConfig = new MappingConfig();
         Map<String, String> map = new HashMap();
@@ -159,22 +168,21 @@ public class HugeGraphSinkWriterIT {
         } finally {
         }
 
-        List<Object> results =
-                gremlinManager
-                        .gremlin(
-                                "g.V().hasLabel('person_for_test').has('name', 'vadas').values('age')")
-                        .execute()
-                        .data();
-        assertEquals(1, results.size());
-        assertEquals(28, ((Number) results.get(0)).intValue());
+        // Verify using REST API
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("name", "vadas");
+        List<Vertex> vertices = hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
+        assertEquals(1, vertices.size());
+        assertEquals(28, vertices.get(0).property("age"));
     }
 
     @Test
     public void testDelete() throws IOException {
-        // First, insert a vertex
-        gremlinManager
-                .gremlin("g.addV('person_for_test').property('name', 'josh').property('age', 32)")
-                .execute();
+        // First, insert a vertex using REST API
+        Vertex josh = new Vertex(VERTEX_LABEL_PERSON);
+        josh.property("name", "josh");
+        josh.property("age", 32);
+        hugeClient.graph().addVertex(josh);
 
         SchemaConfig schemaConfig = new SchemaConfig();
         schemaConfig.setType(SchemaConfig.LabelType.VERTEX);
@@ -192,11 +200,10 @@ public class HugeGraphSinkWriterIT {
         } finally {
         }
 
-        List<Object> results =
-                gremlinManager
-                        .gremlin("g.V().hasLabel('person_for_test').has('name', 'josh')")
-                        .execute()
-                        .data();
-        assertFalse(results.iterator().hasNext(), "Vertex should have been deleted");
+        // Verify using REST API
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("name", "josh");
+        List<Vertex> vertices = hugeClient.graph().listVertices(VERTEX_LABEL_PERSON, properties, 10);
+        assertTrue(vertices.isEmpty(), "Vertex should have been deleted");
     }
 }
