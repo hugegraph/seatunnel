@@ -21,12 +21,12 @@ graph TB
         Transform[Transform Layer<br/>可选]
         Sink[HugeGraph Sink]
     end
-    
+
     subgraph "Data Flow"
         Row[SeaTunnelRow]
         Event[CDC Event<br/>INSERT/UPDATE/DELETE]
     end
-    
+
     subgraph "HugeGraph Connector"
         Factory[HugeGraphSinkFactory]
         SinkImpl[HugeGraphSink]
@@ -34,11 +34,11 @@ graph TB
         Mapper[GraphDataMapper]
         Client[HugeGraphClient]
     end
-    
+
     subgraph "HugeGraph Server"
         GraphDB[(HugeGraph<br/>Database)]
     end
-    
+
     Source --> Row
     Row --> Transform
     Transform --> Event
@@ -311,20 +311,20 @@ public class SchemaValidator {
 ### 测试覆盖范围
 
 1. **单元测试**
-   - 映射逻辑测试
-   - 配置解析测试
-   - 缓冲区管理测试
+    - 映射逻辑测试
+    - 配置解析测试
+    - 缓冲区管理测试
 
 2. **集成测试**
-   - 使用 Testcontainers 启动 HugeGraph
-   - CDC 事件处理测试
-   - 级联删除测试
-   - 批量写入测试
+    - 使用 Testcontainers 启动 HugeGraph
+    - CDC 事件处理测试
+    - 级联删除测试
+    - 批量写入测试
 
 3. **端到端测试**
-   - MySQL → SeaTunnel → HugeGraph 完整流程
-   - 性能测试（100万条记录）
-   - 故障恢复测试
+    - MySQL → SeaTunnel → HugeGraph 完整流程
+    - 性能测试（100万条记录）
+    - 故障恢复测试
 
 ### 测试示例
 
@@ -449,29 +449,29 @@ sink {
 ## 性能优化考虑
 
 1. **批量写入优化**
-   - 使用 HugeGraph 批量 API
-   - 实现混合触发策略（记录数 + 时间窗口）
-   - 支持并发写入（线程池）
+    - 使用 HugeGraph 批量 API
+    - 实现混合触发策略（记录数 + 时间窗口）
+    - 支持并发写入（线程池）
 
 2. **内存管理**
-   - 使用环形缓冲区避免频繁 GC
-   - 实现背压机制防止 OOM
+    - 使用环形缓冲区避免频繁 GC
+    - 实现背压机制防止 OOM
 
 3. **连接池管理**
-   - 复用 HTTP 连接
-   - 合理配置连接池大小
+    - 复用 HTTP 连接
+    - 合理配置连接池大小
 
 ## 未来扩展
 
 1. **Phase 2: Source 实现**
-   - 支持从 HugeGraph 读取数据
-   - 支持 Gremlin 查询
+    - 支持从 HugeGraph 读取数据
+    - 支持 Gremlin 查询
 
 2. **Phase 3: 高级特性**
-   - 支持自动 Schema 创建
-   - 支持自定义 ID 生成策略
-   - 支持多图空间并行写入
-   - 支持 OLAP 查询集成
+    - 支持自动 Schema 创建
+    - 支持自定义 ID 生成策略
+    - 支持多图空间并行写入
+    - 支持 OLAP 查询集成
 
 ## 实现方案对比分析
 
@@ -481,9 +481,9 @@ Neo4j 连接器采用了 **Cypher 查询语言** 的实现方式：
 
 #### 特点
 1. **基于 Cypher 语句**
-   - 用户直接配置 Cypher 查询模板
-   - 通过参数占位符映射数据字段
-   - 示例：`CREATE (n:Person {name: $name, age: $age})`
+    - 用户直接配置 Cypher 查询模板
+    - 通过参数占位符映射数据字段
+    - 示例：`CREATE (n:Person {name: $name, age: $age})`
 
 2. **配置方式**
    ```hocon
@@ -514,9 +514,9 @@ Neo4j 连接器采用了 **Cypher 查询语言** 的实现方式：
 
 #### 特点
 1. **基于 Java Client API**
-   - 使用 HugeGraph Java Client SDK
-   - 通过 API 调用操作图数据
-   - 示例：`graph.addVertex(T.label, "person", "name", name)`
+    - 使用 HugeGraph Java Client SDK
+    - 通过 API 调用操作图数据
+    - 示例：`graph.addVertex(T.label, "person", "name", name)`
 
 2. **配置方式（我们的设计）**
    ```hocon
@@ -624,26 +624,26 @@ private void tryWriteByBatchSize() {
 ## 设计决策和理由
 
 1. **为什么选择 Client API 而非 Cypher/Gremlin**
-   - 降低用户学习成本
-   - 更好的 CDC 支持
-   - 符合 MVP 快速交付原则
+    - 降低用户学习成本
+    - 更好的 CDC 支持
+    - 符合 MVP 快速交付原则
 
 2. **为什么选择 SinkAggregatedCommitter**
-   - 提供更强的一致性保证
-   - 便于实现分布式事务
-   - 符合 SeaTunnel 最佳实践
+    - 提供更强的一致性保证
+    - 便于实现分布式事务
+    - 符合 SeaTunnel 最佳实践
 
 3. **为什么实现级联删除**
-   - 保证图数据完整性
-   - 避免悬空边
-   - 符合图数据库语义
+    - 保证图数据完整性
+    - 避免悬空边
+    - 符合图数据库语义
 
 4. **为什么采用混合批处理策略**
-   - 平衡延迟和吞吐量
-   - 适应不同负载模式
-   - 提供灵活的配置选项
+    - 平衡延迟和吞吐量
+    - 适应不同负载模式
+    - 提供灵活的配置选项
 
 5. **为什么分离映射逻辑**
-   - 提高代码可维护性
-   - 便于扩展新的映射规则
-   - 支持复杂的转换场景
+    - 提高代码可维护性
+    - 便于扩展新的映射规则
+    - 支持复杂的转换场景
