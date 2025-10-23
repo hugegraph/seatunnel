@@ -21,6 +21,7 @@ import org.apache.seatunnel.api.sink.SupportMultiTableSinkWriter;
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
 import org.apache.seatunnel.connectors.seatunnel.common.sink.AbstractSinkWriter;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.buffer.BatchBuffer;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
@@ -29,20 +30,14 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.EdgeMapper;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.GraphDataMapper;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.VertexMapper;
 
-import org.apache.hugegraph.driver.HugeClient;
 import org.apache.hugegraph.structure.GraphElement;
 import org.apache.hugegraph.structure.graph.Edge;
-import org.apache.hugegraph.structure.graph.Vertex;
-import org.apache.hugegraph.structure.schema.VertexLabel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
         implements SupportMultiTableSinkWriter<Void> {
@@ -51,25 +46,26 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
 
     private final HugeGraphSinkConfig sinkConfig;
     private final GraphDataMapper mapper;
-    private final boolean batchWrite = false;
+    private final HugeGraphClient client;
 
-    // TODO: 优先实现batch提交，按时间提交后续放到 BatchBuffer 类实现
-    private final ArrayList<GraphElement> buffer;
+    private final BatchBuffer buffer;
 
     public HugeGraphSinkWriter(HugeGraphSinkConfig sinkConfig, SeaTunnelRowType rowType) {
         this.sinkConfig = sinkConfig;
-        SchemaConfig schemaConfig = sinkConfig.getSchemaConfig();
-        HugeClient client = HugeGraphClient.getInstance(sinkConfig);
+        this.client = new HugeGraphClient(sinkConfig);
+        this.mapper = getMapper(rowType);
+        this.buffer =
+                new BatchBuffer(
+                        this.client, sinkConfig.getBatchSize(), sinkConfig.getBatchIntervalMs());
+    }
 
+    private GraphDataMapper getMapper(SeaTunnelRowType rowType) {
+        SchemaConfig schemaConfig = sinkConfig.getSchemaConfig();
         if (schemaConfig.getType() == LabelType.VERTEX) {
-            VertexLabel vertexLabel =
-                    client.schema().getVertexLabel(sinkConfig.getSchemaConfig().getLabel());
-            String labelId = String.valueOf(vertexLabel.id());
-            this.mapper = new VertexMapper(schemaConfig, rowType, client, labelId);
+            return new VertexMapper(schemaConfig, rowType, client);
         } else {
-            this.mapper = new EdgeMapper(schemaConfig, rowType, client);
+            return new EdgeMapper(schemaConfig, rowType, client);
         }
-        this.buffer = new ArrayList<>();
     }
 
     @Override
@@ -91,34 +87,27 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
 
     private void handleUpsert(SeaTunnelRow row) throws IOException {
         try {
-            flush();
-            if (batchWrite) {
-                GraphElement element = mapper.map(row);
-                buffer.add(element);
-            } else {
-                if (sinkConfig.getSchemaConfig().getType() == LabelType.VERTEX) {
-                    Vertex vertex = (Vertex) mapper.map(row);
-                    HugeGraphClient.writeVertex(vertex);
-                } else {
-                    Edge edge = (Edge) mapper.map(row);
-                    HugeGraphClient.writeEdge(edge);
-                }
-            }
-
+            GraphElement element = mapper.map(row);
+            buffer.add(element);
         } catch (Exception e) {
+
+            if (e instanceof IOException) {
+                throw (IOException) e;
+            }
             throw new IOException(e);
         }
     }
 
     private void handleDelete(SeaTunnelRow row) throws IOException {
         try {
-            flush();
+            buffer.flush();
+            // TODO: 考虑是否引入batch删除
             if (sinkConfig.getSchemaConfig().getType() == LabelType.VERTEX) {
                 Object vertexId = mapper.extractId(row);
-                HugeGraphClient.deleteVertexWithEdges(vertexId);
+                client.deleteVertexWithEdges(vertexId);
             } else {
                 Edge edge = (Edge) mapper.map(row);
-                HugeGraphClient.deleteEdge(edge);
+                client.deleteEdge(edge);
             }
         } catch (Exception e) {
             throw new IOException(e);
@@ -127,32 +116,25 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
 
     @Override
     public Optional<Void> prepareCommit() {
-        flush();
+        try {
+            buffer.flush();
+        } catch (IOException e) {
+            // 当 prepareCommit 阶段的 flush 失败时，我们必须让整个任务失败，
+            // 否则会导致数据丢失（Source 提交了，Sink 没写入）。
+            LOG.error("Failed to flush data during prepareCommit, failing checkpoint.", e);
+            throw new RuntimeException("Failed to flush data during prepareCommit()", e);
+        }
         return Optional.empty();
     }
 
     @Override
     public void close() throws IOException {
-        flush();
-        HugeGraphClient.close();
-    }
+        if (buffer != null) {
+            buffer.close();
+        }
 
-    public synchronized void flush() {
-        if (!buffer.isEmpty()) {
-            if (sinkConfig.getSchemaConfig().getType() == LabelType.VERTEX) {
-                List<Vertex> vertices =
-                        buffer.stream()
-                                .map(element -> (Vertex) element) // 2. 对流中的每个元素应用一个函数（乘以2）
-                                .collect(Collectors.toList());
-                HugeGraphClient.batchWriteVertices(vertices);
-            } else {
-                List<Edge> edges =
-                        buffer.stream()
-                                .map(element -> (Edge) element) // 2. 对流中的每个元素应用一个函数（乘以2）
-                                .collect(Collectors.toList());
-                HugeGraphClient.batchWriteEdges(edges);
-            }
-            buffer.clear();
+        if (client != null) {
+            client.close();
         }
     }
 }

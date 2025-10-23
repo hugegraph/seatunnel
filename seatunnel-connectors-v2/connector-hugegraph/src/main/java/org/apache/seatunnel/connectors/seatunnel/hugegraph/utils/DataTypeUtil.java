@@ -20,9 +20,6 @@ package org.apache.seatunnel.connectors.seatunnel.hugegraph.utils;
 import org.apache.hugegraph.structure.constant.Cardinality;
 import org.apache.hugegraph.structure.constant.DataType;
 import org.apache.hugegraph.structure.schema.PropertyKey;
-import org.apache.hugegraph.util.E;
-import org.apache.hugegraph.util.InsertionOrderUtil;
-import org.apache.hugegraph.util.ReflectionUtil;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -30,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -54,13 +52,6 @@ public final class DataTypeUtil {
         ACCEPTABLE_FALSE.add("0");
         ACCEPTABLE_FALSE.add("no");
         ACCEPTABLE_FALSE.add("n");
-    }
-
-    public static boolean isSimpleValue(Object value) {
-        if (value == null) {
-            return false;
-        }
-        return ReflectionUtil.isSimpleType(value.getClass());
     }
 
     public static Object convert(Object value, PropertyKey propertyKey) {
@@ -132,7 +123,7 @@ public final class DataTypeUtil {
         }
 
         if (dataType.isNumber()) {
-            return parseNumber(key, value, dataType);
+            return parseNumber(key, value);
         }
 
         switch (dataType) {
@@ -220,7 +211,7 @@ public final class DataTypeUtil {
     }
 
     /**
-     * collection format: "obj1,obj2,...,objn" or "[obj1,obj2,...,objn]" ..etc TODO: After parsing
+     * collection format: "obj1,obj2,...,obj_n" or "[obj1,obj2,...,obj_n]" ..etc TODO: After parsing
      * to json, the order of the collection changed in some cases (such as list<date>)
      */
     private static Object parseMultiValues(
@@ -239,9 +230,7 @@ public final class DataTypeUtil {
         String rawValue = (String) values;
         List<Object> valueColl = split(key, rawValue);
         Collection<Object> results =
-                cardinality == Cardinality.LIST
-                        ? InsertionOrderUtil.newList()
-                        : InsertionOrderUtil.newSet();
+                cardinality == Cardinality.LIST ? new ArrayList<>() : new LinkedHashSet<>();
         valueColl.forEach(
                 value -> {
                     results.add(parseSingleValue(key, value, dataType));

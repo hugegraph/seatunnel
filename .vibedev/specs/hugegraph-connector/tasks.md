@@ -228,13 +228,13 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 10. 配置示例和文档
 
-- [ ] **10.1 创建配置示例文件**
+- [x] **10.1 创建配置示例文件**
   - 创建简单顶点同步示例配置
   - 创建边同步示例配置
   - 创建 CDC 增量同步示例配置
   - 满足需求 7.5, 8.2, 8.3
 
-- [ ] **10.2 编写用户文档**
+- [x] **10.2 编写用户文档**
   - 创建 README.md 文档
   - 说明所有配置选项
   - 提供完整的使用示例
@@ -270,12 +270,12 @@ mvnd test -pl seatunnel-connectors-v2/connector-hugegraph
 
 ## 12. 集成和注册
 
-- [ ] **12.1 注册连接器到 SeaTunnel**
+- [x] **12.1 注册连接器到 SeaTunnel**
   - 更新 `plugin-mapping.properties` 文件
   - 添加 HugeGraph 连接器映射
   - 满足需求 1.1
 
-- [ ] **12.2 更新项目依赖**
+- [x] **12.2 更新项目依赖**
   - 更新 `seatunnel-dist/pom.xml`
   - 添加 HugeGraph 连接器依赖
   - 确保连接器包含在二进制发布包中

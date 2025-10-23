@@ -2,15 +2,15 @@ package org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper;
 
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.DataTypeUtil;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.E;
 
-import org.apache.hugegraph.driver.HugeClient;
 import org.apache.hugegraph.structure.constant.IdStrategy;
 import org.apache.hugegraph.structure.graph.Vertex;
 import org.apache.hugegraph.structure.schema.PropertyKey;
-import org.apache.hugegraph.util.E;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,23 +25,19 @@ public class VertexMapper implements GraphDataMapper {
     private final MappingConfig mappingConfig;
     private final Map<String, Integer> fieldsIndex;
     private final String labelId;
-    private final HugeClient client;
+    private final HugeGraphClient client;
 
     public VertexMapper(
-            SchemaConfig schemaConfig,
-            SeaTunnelRowType rowType,
-            HugeClient client,
-            String labelId) {
+            SchemaConfig schemaConfig, SeaTunnelRowType rowType, HugeGraphClient client) {
         this.schemaConfig = schemaConfig;
-        // mappingConfig can be null if not defined in user's config
         this.mappingConfig =
                 schemaConfig.getMapping() == null ? new MappingConfig() : schemaConfig.getMapping();
         this.fieldsIndex =
                 IntStream.range(0, rowType.getTotalFields())
                         .boxed()
                         .collect(Collectors.toMap(rowType::getFieldName, i -> i));
-        this.labelId = labelId;
         this.client = client;
+        this.labelId = client.getVertexLabel(schemaConfig.getLabel());
     }
 
     @Override
@@ -86,7 +82,7 @@ public class VertexMapper implements GraphDataMapper {
             }
 
             String targetPropertyName = fieldMapping.getOrDefault(sourceFieldName, sourceFieldName);
-            PropertyKey propertykey = client.schema().getPropertyKey(targetPropertyName);
+            PropertyKey propertykey = client.getPropertyKey(targetPropertyName);
             Object fieldValue =
                     DataTypeUtil.convert(row.getField(fieldEntry.getValue()), propertykey);
 
@@ -196,11 +192,11 @@ public class VertexMapper implements GraphDataMapper {
     // Simplified from hugegraph-loader's ElementBuilder.
     // It should use label id instead of name, here is a compromise.
     private String spliceVertexId(List<Object> primaryValues) {
-        // 1. 使用 Stream API 將 List<Object> 中的所有元素轉換為 String，並用 "!" 連接起來
+        // 1. 使用 Stream API 將 List<Object> 中的所有元素转换为 String，使用 "!" 连接
         String joinedValues =
                 primaryValues.stream()
                         .map(Object::toString) // 將每個元素轉換為字串
-                        .collect(Collectors.joining("!")); // 用 "!" 作為分隔符進行拼接
+                        .collect(Collectors.joining("!")); // 用 "!" 作为分隔符连接
 
         // 2. 使用 String.format() 將 label 和拼接好的字串組合起來
         return String.format("%s:%s", labelId, joinedValues);

@@ -17,8 +17,11 @@
 
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.buffer;
 
-import org.apache.hugegraph.driver.HugeClient;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
+
 import org.apache.hugegraph.structure.GraphElement;
+import org.apache.hugegraph.structure.graph.Edge;
+import org.apache.hugegraph.structure.graph.Vertex;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +33,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** 一个用于向 HugeGraph 批量写入数据的缓冲区。 它支持按批次大小和时间间隔两种策略触发写入操作。 这个类是线程安全的。 */
 public class BatchBuffer implements AutoCloseable {
@@ -43,6 +47,7 @@ public class BatchBuffer implements AutoCloseable {
 
     private volatile boolean closed = false;
     private volatile Exception flushException;
+    private final HugeGraphClient client;
 
     /**
      * 构造函数
@@ -51,9 +56,10 @@ public class BatchBuffer implements AutoCloseable {
      * @param batchSize 每个批次的最大大小。当缓冲区中的元素数量达到此值时，将触发一次写入。
      * @param batchIntervalMs 批处理的最大时间间隔（毫秒）。如果设置为大于 0 的值， 会有一个后台线程定期检查并刷新缓冲区。
      */
-    public BatchBuffer(HugeClient client, int batchSize, long batchIntervalMs) {
+    public BatchBuffer(HugeGraphClient client, int batchSize, long batchIntervalMs) {
 
         this.batchSize = batchSize;
+        this.client = client;
 
         if (batchIntervalMs > 0) {
             this.scheduler =
@@ -89,7 +95,7 @@ public class BatchBuffer implements AutoCloseable {
      * @param element 要添加的图元素
      * @throws IOException 如果后台刷新任务失败或本次刷新失败
      */
-    public void add(GraphElement element) throws IOException {
+    public synchronized void add(GraphElement element) throws IOException {
         checkFlushException();
         if (closed) {
             throw new IOException("BatchBuffer is already closed.");
@@ -103,8 +109,6 @@ public class BatchBuffer implements AutoCloseable {
             }
         } catch (Exception e) {
             throw new IOException("Failed to add element and flush", e);
-        } finally {
-
         }
     }
 
@@ -118,10 +122,7 @@ public class BatchBuffer implements AutoCloseable {
         if (closed && buffer.isEmpty()) {
             return;
         }
-        try {
-            doFlush();
-        } finally {
-        }
+        doFlush();
     }
 
     /**
@@ -133,11 +134,18 @@ public class BatchBuffer implements AutoCloseable {
         if (buffer.isEmpty()) {
             return;
         }
-
         try {
-            for (GraphElement element : buffer) {
-                // 使用 .equals() 进行字符串比较
-
+            GraphElement firstElement = buffer.get(0);
+            if (firstElement instanceof Vertex) {
+                List<Vertex> vertices =
+                        buffer.stream()
+                                .map(element -> (Vertex) element)
+                                .collect(Collectors.toList());
+                client.batchWriteVertices(vertices);
+            } else {
+                List<Edge> edges =
+                        buffer.stream().map(element -> (Edge) element).collect(Collectors.toList());
+                client.batchWriteEdges(edges);
             }
             // 写入成功后清空缓冲区
             buffer.clear();
@@ -154,17 +162,11 @@ public class BatchBuffer implements AutoCloseable {
      */
     @Override
     public void close() throws IOException {
-        if (closed) {
-            return;
-        }
-
-        try {
+        synchronized (this) {
             if (closed) {
                 return;
             }
             closed = true;
-        } finally {
-
         }
 
         // 停止定时调度
@@ -184,8 +186,10 @@ public class BatchBuffer implements AutoCloseable {
         }
 
         // 在关闭前确保所有缓冲的数据都被提交
+        LOG.info("Closing BatchBuffer, performing final flush...");
         flush();
         checkFlushException();
+        LOG.info("BatchBuffer closed.");
     }
 
     /** 检查后台线程中是否有异常发生，并在主线程中重新抛出。 */

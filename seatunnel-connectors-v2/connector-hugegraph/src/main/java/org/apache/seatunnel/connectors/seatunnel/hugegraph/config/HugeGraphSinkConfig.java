@@ -51,10 +51,18 @@ public class HugeGraphSinkConfig implements Serializable {
         sinkConfig.setHost(config.get(HugeGraphOptions.HOST));
         sinkConfig.setPort(config.get(HugeGraphOptions.PORT));
         sinkConfig.setGraphName(config.get(HugeGraphOptions.GRAPH_NAME));
-        sinkConfig.setBatchSize(config.get(HugeGraphOptions.BATCH_SIZE));
-        sinkConfig.setBatchIntervalMs(config.get(HugeGraphOptions.BATCH_INTERVAL_MS));
-        sinkConfig.setMaxRetries(config.get(HugeGraphOptions.MAX_RETRIES));
-        sinkConfig.setRetryBackoffMs(config.get(HugeGraphOptions.RETRY_BACKOFF_MS));
+        sinkConfig.setBatchSize(
+                config.getOptional(HugeGraphOptions.BATCH_SIZE)
+                        .orElse(HugeGraphOptions.BATCH_SIZE.defaultValue()));
+        sinkConfig.setBatchIntervalMs(
+                config.getOptional(HugeGraphOptions.BATCH_INTERVAL_MS)
+                        .orElse(HugeGraphOptions.BATCH_INTERVAL_MS.defaultValue()));
+        sinkConfig.setMaxRetries(
+                config.getOptional(HugeGraphOptions.MAX_RETRIES)
+                        .orElse(HugeGraphOptions.MAX_RETRIES.defaultValue()));
+        sinkConfig.setRetryBackoffMs(
+                config.getOptional(HugeGraphOptions.RETRY_BACKOFF_MS)
+                        .orElse(HugeGraphOptions.RETRY_BACKOFF_MS.defaultValue()));
         sinkConfig.setPropertyMapping(config.get(HugeGraphOptions.PROPERTY_MAPPING));
         sinkConfig.setSchemaConfig(config.get(HugeGraphOptions.SCHEMA_CONFIG));
 

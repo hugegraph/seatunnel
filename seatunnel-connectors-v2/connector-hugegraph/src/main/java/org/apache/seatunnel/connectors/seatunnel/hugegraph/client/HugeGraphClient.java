@@ -20,69 +20,33 @@ package org.apache.seatunnel.connectors.seatunnel.hugegraph.client;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkConfig;
 
 import org.apache.hugegraph.driver.HugeClient;
+import org.apache.hugegraph.driver.SchemaManager;
 import org.apache.hugegraph.exception.ServerException;
 import org.apache.hugegraph.rest.ClientException;
 import org.apache.hugegraph.structure.graph.Edge;
 import org.apache.hugegraph.structure.graph.Vertex;
+import org.apache.hugegraph.structure.schema.PropertyKey;
+import org.apache.hugegraph.structure.schema.VertexLabel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import lombok.Getter;
+
+import java.io.IOException;
 import java.util.List;
 
 public final class HugeGraphClient {
 
+    // TODO: 目前先进行简单逻辑实现，后续可补充 schema 获取失败的相关逻辑
     private static final Logger LOG = LoggerFactory.getLogger(HugeGraphClient.class);
 
-    // 【修改】使用 volatile 保证多线程环境下的可见性
-    private static volatile HugeClient instance;
+    private final HugeClient client;
+    @Getter private final SchemaManager schema;
 
-    // 【新增】用于保存配置，以便在需要时重建客户端
-    private static HugeGraphSinkConfig sinkConfig;
-
-    /** 私有构造函数，防止外部实例化 */
-    private HugeGraphClient() {}
-
-    /**
-     * 获取 HugeClient 单例实例。 此版本修改为线程安全的懒汉式实现。
-     *
-     * @param config HugeGraph 的配置对象，在首次创建或重建实例时使用。
-     * @return HugeClient 的单例实例。
-     */
-    public static HugeClient getInstance(HugeGraphSinkConfig config) {
-        // 使用双重检查锁定（DCL）来确保线程安全和性能
-        if (instance == null) {
-            synchronized (HugeGraphClient.class) {
-                if (instance == null) {
-                    LOG.info("HugeClient instance not found, creating a new one (thread-safe)...");
-                    // 【修改】保存配置
-                    sinkConfig = config;
-                    instance = createClient(config);
-                }
-            }
-        }
-        return instance;
-    }
-
-    /**
-     * 【新增】内部获取客户端的方法，包含检查和按需创建的逻辑 这是所有数据操作方法的入口点
-     *
-     * @return 可用的 HugeClient 实例
-     * @throws IllegalStateException 如果客户端未初始化且无法重建
-     */
-    private static HugeClient getClient() {
-        if (instance == null) {
-            LOG.warn("HugeClient instance is null. Attempting to re-initialize...");
-            if (sinkConfig == null) {
-                // 如果连配置都没有，说明从未成功初始化过，无法重建
-                throw new IllegalStateException(
-                        "HugeGraphClient has not been initialized. "
-                                + "Cannot perform write/delete operations. Please call getInstance(config) first.");
-            }
-            // 使用保存的配置重建实例
-            instance = createClient(sinkConfig);
-        }
-        return instance;
+    public HugeGraphClient(HugeGraphSinkConfig config) {
+        this.client = createClient(config);
+        this.schema = client.schema();
     }
 
     private static HugeClient createClient(HugeGraphSinkConfig config) {
@@ -132,153 +96,152 @@ public final class HugeGraphClient {
                 "Failed to create HugeClient after " + maxRetries + " attempts.");
     }
 
-    // ===================================================================================
-    //  【重点修改区域】所有写入和删除函数都通过新的 getClient() 方法获取实例
-    // ===================================================================================
+    public PropertyKey getPropertyKey(String propertyName) {
+        return schema.getPropertyKey(propertyName);
+    }
 
-    public static void writeVertex(Vertex vertex) {
+    public String getVertexLabel(String label) {
+        VertexLabel vertexLabel = this.client.schema().getVertexLabel(label);
+        return String.valueOf(vertexLabel.id());
+    }
+
+    public void writeVertex(Vertex vertex) throws IOException {
         try {
-            getClient().graph().addVertex(vertex);
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().addVertex(vertex);
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to write vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to write vertex, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error writing vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error writing vertex", e);
         }
     }
 
-    public static void writeEdge(Edge edge) {
+    public void writeEdge(Edge edge) throws IOException {
         try {
-            getClient().graph().addEdge(edge);
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().addEdge(edge);
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to write edge (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to write edge, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error writing edge (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error writing edge", e);
         }
     }
 
-    public static void deleteVertex(Object vertexId) {
+    public void deleteVertex(Object vertexId) throws IOException {
         try {
-            getClient().graph().removeVertex(vertexId);
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().removeVertex(vertexId);
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to delete vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to delete vertex, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error deleting vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error deleting vertex", e);
         }
     }
 
-    public static void deleteEdge(Edge edge) {
+    public void deleteEdge(Edge edge) throws IOException {
         try {
-            getClient().graph().removeEdge(edge.id());
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().removeEdge(edge.id());
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to delete edge (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to delete edge, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error deleting edge (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error deleting edge", e);
         }
     }
 
-    public static void deleteVertexWithEdges(Object vertexId) {
+    public void deleteVertexWithEdges(Object vertexId) throws IOException {
         try {
-            HugeClient client = getClient();
-            List<Edge> edges = client.graph().getEdges(vertexId);
+            List<Edge> edges = this.client.graph().getEdges(vertexId);
             for (Edge edge : edges) {
-                client.graph().removeEdge(edge.id());
+                this.client.graph().removeEdge(edge.id());
             }
-            client.graph().removeVertex(vertexId);
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().removeVertex(vertexId);
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to delete vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to delete vertex, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error deleting vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error deleting vertex", e);
         }
     }
 
-    public static void batchWriteVertices(List<Vertex> buffer) {
+    public void batchWriteVertices(List<Vertex> buffer) throws IOException {
         try {
-            HugeClient client = getClient();
-            client.graph().addVertices(buffer);
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().addVertices(buffer);
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to batch write vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to batch write vertex, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error batch writing vertex (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error batch writing vertex", e);
         }
     }
 
-    public static void batchWriteEdges(List<Edge> buffer) {
+    public void batchWriteEdges(List<Edge> buffer) throws IOException {
         try {
-            HugeClient client = getClient();
-            client.graph().addEdges(buffer);
-        } catch (ServerException e) {
-            // 处理服务器端错误,如schema验证失败、约束冲突等
-            System.err.println("服务器端插入失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
-        } catch (ClientException e) {
-            // 处理客户端通信错误,如连接断开、超时等
-            System.err.println("客户端通信失败: " + e.getMessage());
-            throw e; // 或者根据业务需求处理
+            this.client.graph().addEdges(buffer);
+        } catch (ServerException | ClientException e) {
+            LOG.error(
+                    "Failed to batch write edge (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Failed to batch write edge, triggering task restart", e);
         } catch (Exception e) {
-            // 处理其他未预期的异常
-            System.err.println("未知错误: " + e.getMessage());
-            throw e;
+            LOG.error(
+                    "Unknown error batch writing edge (will trigger task restart). Error: {}",
+                    e.getMessage(),
+                    e);
+            throw new IOException("Unknown error batch writing dege", e);
         }
     }
 
-    /** 关闭单例客户端连接。 【修改】同样需要同步以保证线程安全 */
-    public static synchronized void close() {
-        if (instance != null) {
+    public void close() throws IOException {
+        if (this.client != null) {
             try {
                 LOG.info("Closing HugeClient singleton instance.");
-                instance.close();
+                this.client.close();
             } catch (Exception e) {
                 LOG.error("Error closing HugeClient instance.", e);
-            } finally {
-                instance = null;
             }
         }
     }

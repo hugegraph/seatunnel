@@ -2,15 +2,14 @@ package org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper;
 
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.SourceTargetConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.DataTypeUtil;
 
-import org.apache.hugegraph.driver.HugeClient;
 import org.apache.hugegraph.structure.graph.Edge;
 import org.apache.hugegraph.structure.schema.PropertyKey;
-import org.apache.hugegraph.util.E;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -25,9 +24,9 @@ public class EdgeMapper implements GraphDataMapper {
     private final SchemaConfig schemaConfig;
     private final MappingConfig mappingConfig;
     private final Map<String, Integer> fieldsIndex;
-    private final HugeClient client;
+    private final HugeGraphClient client;
 
-    public EdgeMapper(SchemaConfig schemaConfig, SeaTunnelRowType rowType, HugeClient client) {
+    public EdgeMapper(SchemaConfig schemaConfig, SeaTunnelRowType rowType, HugeGraphClient client) {
         this.schemaConfig = schemaConfig;
         this.client = client;
         this.mappingConfig =
@@ -75,7 +74,7 @@ public class EdgeMapper implements GraphDataMapper {
             }
 
             String targetPropertyName = fieldMapping.getOrDefault(sourceFieldName, sourceFieldName);
-            PropertyKey propertykey = client.schema().getPropertyKey(targetPropertyName);
+            PropertyKey propertykey = client.getPropertyKey(targetPropertyName);
             Object fieldValue =
                     DataTypeUtil.convert(row.getField(fieldEntry.getValue()), propertykey);
 
@@ -83,20 +82,16 @@ public class EdgeMapper implements GraphDataMapper {
                 continue;
             }
 
-            fieldValue = getMappedValue(String.valueOf(fieldValue));
+            fieldValue = getMappedValue(fieldValue);
             edge.property(targetPropertyName, fieldValue);
         }
         return edge;
     }
 
     private String buildVertexId(SeaTunnelRow row, SourceTargetConfig config) {
-        E.checkArgument(
-                config != null, "Source/Target vertex config must be specified for edge mapping.");
+        // check config
         List<String> idFields = config.getIdFields();
-        E.checkArgument(
-                idFields != null && !idFields.isEmpty(),
-                "The 'idFields' must be specified for source/target vertex in edge mapping.");
-
+        // check idField
         List<Object> idValues = getFieldValues(row, idFields);
         if (idValues.stream().anyMatch(this::isConsideredNull)) {
             return null;
@@ -109,10 +104,6 @@ public class EdgeMapper implements GraphDataMapper {
                 .map(
                         name -> {
                             Integer index = fieldsIndex.get(name);
-                            E.checkArgument(
-                                    index != null,
-                                    "Cannot find ID field '%s' in SeaTunnelRowType.",
-                                    name);
                             return row.getField(index);
                         })
                 .collect(Collectors.toList());
@@ -129,12 +120,15 @@ public class EdgeMapper implements GraphDataMapper {
         return nullValues.contains(String.valueOf(value));
     }
 
-    private Object getMappedValue(String originalValue) {
+    private Object getMappedValue(Object originalValue) {
+        if (originalValue == null) {
+            return null;
+        }
         Map<Object, Object> valueMapping = mappingConfig.getValue_mapping();
         if (valueMapping == null || valueMapping.isEmpty()) {
             return originalValue;
         }
-        return valueMapping.getOrDefault(originalValue, originalValue);
+        return valueMapping.getOrDefault(String.valueOf(originalValue), originalValue);
     }
 
     private String spliceVertexId(String label, Object... primaryValues) {

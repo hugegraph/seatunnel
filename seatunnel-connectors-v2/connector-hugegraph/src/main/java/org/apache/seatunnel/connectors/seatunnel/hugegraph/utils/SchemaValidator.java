@@ -25,7 +25,6 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkC
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.LabelType;
 
-import org.apache.hugegraph.driver.HugeClient;
 import org.apache.hugegraph.driver.SchemaManager;
 import org.apache.hugegraph.structure.constant.DataType;
 import org.apache.hugegraph.structure.schema.EdgeLabel;
@@ -41,17 +40,16 @@ public final class SchemaValidator {
     private final HugeGraphSinkConfig sinkConfig;
     private final SeaTunnelRowType rowType;
 
-    private HugeClient client;
+    private HugeGraphClient client;
 
     public SchemaValidator(HugeGraphSinkConfig config, SeaTunnelRowType rowType) {
         this.sinkConfig = config;
         this.rowType = rowType;
+        this.client = new HugeGraphClient(sinkConfig);
     }
 
     public void validateSchema() {
         try {
-            this.client = HugeGraphClient.getInstance(sinkConfig);
-
             SchemaConfig schemaConfig = sinkConfig.getSchemaConfig();
             if (schemaConfig.getType() == LabelType.VERTEX) {
                 validateVertex(schemaConfig);
@@ -62,7 +60,7 @@ public final class SchemaValidator {
                         "Unsupported schema type: " + schemaConfig.getType());
             }
 
-            HugeGraphClient.close();
+            client.close();
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -70,7 +68,7 @@ public final class SchemaValidator {
     }
 
     private void validateVertex(SchemaConfig schemaConfig) {
-        SchemaManager schema = client.schema();
+        SchemaManager schema = this.client.getSchema();
         String label = schemaConfig.getLabel();
         VertexLabel vertexLabel = schema.getVertexLabel(label);
         if (vertexLabel == null) {
@@ -81,7 +79,7 @@ public final class SchemaValidator {
     }
 
     private void validateEdge(SchemaConfig schemaConfig) {
-        SchemaManager schema = client.schema();
+        SchemaManager schema = this.client.getSchema();
         String label = schemaConfig.getLabel();
         EdgeLabel edgeLabel = schema.getEdgeLabel(label);
         if (edgeLabel == null) {
