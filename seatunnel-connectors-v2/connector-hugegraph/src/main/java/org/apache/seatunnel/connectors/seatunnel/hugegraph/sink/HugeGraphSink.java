@@ -40,7 +40,7 @@ public class HugeGraphSink extends AbstractSimpleSink<SeaTunnelRow, Void> {
         this.catalogTable = catalogTable;
         this.rowType = catalogTable.getSeaTunnelRowType();
 
-        // TODO: 商议后续实现位置
+        // TODO: Discuss where to implement this in the future, maybe the catalog
         SchemaValidator validator = new SchemaValidator(config, rowType);
         validator.validateSchema();
     }

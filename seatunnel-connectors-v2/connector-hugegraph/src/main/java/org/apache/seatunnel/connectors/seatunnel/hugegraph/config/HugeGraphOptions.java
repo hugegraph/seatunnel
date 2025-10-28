@@ -20,9 +20,6 @@ package org.apache.seatunnel.connectors.seatunnel.hugegraph.config;
 import org.apache.seatunnel.api.configuration.Option;
 import org.apache.seatunnel.api.configuration.Options;
 
-import java.util.List;
-import java.util.Map;
-
 public class HugeGraphOptions {
 
     public static final String PLUGIN_NAME = "HugeGraph";
@@ -61,31 +58,6 @@ public class HugeGraphOptions {
                     .noDefaultValue()
                     .withDescription("HugeGraph password");
 
-    public static final Option<Map<String, String>> PROPERTY_MAPPING =
-            Options.key("property_mapping")
-                    .mapType()
-                    .noDefaultValue()
-                    .withDescription("Property Mapping");
-
-    public static final Option<List<String>> SELECTED_FIELDS =
-            Options.key("selected_fields")
-                    .listType()
-                    .noDefaultValue()
-                    .withDescription("Selected Fields");
-
-    public static final Option<List<String>> IGNORED_FIELDS =
-            Options.key("ignored_fields")
-                    .listType()
-                    .noDefaultValue()
-                    .withDescription("Ignored Fields");
-
-    public static final Option<SchemaConfig> SCHEMA_CONFIG =
-            Options.key("schema_config")
-                    .objectType(SchemaConfig.class)
-                    .noDefaultValue()
-                    .withDescription(
-                            "A list of mapping config objects. Each object describes a mapping to a vertex or edge.");
-
     public static final Option<Integer> BATCH_SIZE =
             Options.key("batch_size").intType().defaultValue(500).withDescription("The batch size");
 
@@ -96,10 +68,7 @@ public class HugeGraphOptions {
                     .withDescription("The batch flash period");
 
     public static final Option<Integer> MAX_RETRIES =
-            Options.key("max_retries")
-                    .intType()
-                    .defaultValue(500)
-                    .withDescription("The retry times");
+            Options.key("max_retries").intType().defaultValue(3).withDescription("The retry times");
 
     public static final Option<Integer> RETRY_BACKOFF_MS =
             Options.key("retry_backoff_ms")

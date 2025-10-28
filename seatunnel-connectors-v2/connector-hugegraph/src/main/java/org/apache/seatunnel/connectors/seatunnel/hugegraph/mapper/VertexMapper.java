@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper;
 
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
@@ -12,6 +29,7 @@ import org.apache.hugegraph.structure.constant.IdStrategy;
 import org.apache.hugegraph.structure.graph.Vertex;
 import org.apache.hugegraph.structure.schema.PropertyKey;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,14 +48,26 @@ public class VertexMapper implements GraphDataMapper {
     public VertexMapper(
             SchemaConfig schemaConfig, SeaTunnelRowType rowType, HugeGraphClient client) {
         this.schemaConfig = schemaConfig;
-        this.mappingConfig =
-                schemaConfig.getMapping() == null ? new MappingConfig() : schemaConfig.getMapping();
+        this.mappingConfig = getMappingConfig();
+        this.client = client;
+        this.labelId = client.getVertexLabel(schemaConfig.getLabel());
         this.fieldsIndex =
                 IntStream.range(0, rowType.getTotalFields())
                         .boxed()
                         .collect(Collectors.toMap(rowType::getFieldName, i -> i));
-        this.client = client;
-        this.labelId = client.getVertexLabel(schemaConfig.getLabel());
+    }
+
+    private MappingConfig getMappingConfig() {
+        MappingConfig mapping =
+                schemaConfig.getMapping() == null ? new MappingConfig() : schemaConfig.getMapping();
+        if (mapping.getFieldMapping() == null) {
+            mapping.setFieldMapping(Collections.emptyMap());
+        }
+        if (mapping.getValueMapping() == null) {
+            mapping.setValueMapping(Collections.emptyMap());
+        }
+        schemaConfig.setMapping(mapping);
+        return mapping;
     }
 
     @Override
@@ -47,64 +77,41 @@ public class VertexMapper implements GraphDataMapper {
         Vertex vertex = new Vertex(label);
 
         // 1. Set vertex ID
-
-        Object id = extractId(row, label);
+        Object id = extractId(row);
         if (id == null && schemaConfig.getIdStrategy() != IdStrategy.AUTOMATIC) {
-            // If ID is null and it's not automatic, we can't create the vertex.
-            // This might happen if a PK field value is in null_values.
             return null;
         }
+
         if (id != null && schemaConfig.getIdStrategy() != IdStrategy.PRIMARY_KEY) {
             vertex.id(id);
         }
 
         // 2. Set properties
-        Map<String, String> fieldMapping = mappingConfig.getField_mapping();
-        if (fieldMapping == null) {
-            fieldMapping = Collections.emptyMap();
-        }
-        Map<Object, Object> valueMapping = mappingConfig.getValue_mapping();
-        if (valueMapping == null) {
-            valueMapping = Collections.emptyMap();
-        }
-        List<String> idFields = schemaConfig.getIdFields();
-        if (idFields == null) {
-            idFields = Collections.emptyList();
-        }
+        Map<String, String> fieldMapping = mappingConfig.getFieldMapping();
 
         for (Map.Entry<String, Integer> fieldEntry : fieldsIndex.entrySet()) {
-            String sourceFieldName = fieldEntry.getKey();
 
-            // Skip ID fields, they are not properties unless explicitly mapped
-            if (idFields.contains(sourceFieldName)
-                    && schemaConfig.getIdStrategy() != IdStrategy.PRIMARY_KEY) {
-                continue;
-            }
+            String fieldName = fieldEntry.getKey();
+            String PropertyName = fieldMapping.getOrDefault(fieldName, fieldName);
+            PropertyKey propertykey = client.getPropertyKey(PropertyName);
 
-            String targetPropertyName = fieldMapping.getOrDefault(sourceFieldName, sourceFieldName);
-            PropertyKey propertykey = client.getPropertyKey(targetPropertyName);
             Object fieldValue =
-                    DataTypeUtil.convert(row.getField(fieldEntry.getValue()), propertykey);
+                    DataTypeUtil.convert(
+                            row.getField(fieldEntry.getValue()),
+                            propertykey,
+                            mappingConfig.getDateFormat(),
+                            mappingConfig.getTimeZone());
 
             if (isConsideredNull(fieldValue)) {
                 continue;
             }
-
-            fieldValue = getMappedValue(fieldValue);
-
-            vertex.property(targetPropertyName, fieldValue);
+            vertex.property(PropertyName, getMappedValue(fieldValue));
         }
         return vertex;
     }
 
     @Override
     public Object extractId(SeaTunnelRow row) {
-        // This method from the interface might not be needed if all logic is in map()
-        // For now, delegate to the internal method
-        return extractId(row, schemaConfig.getLabel());
-    }
-
-    private Object extractId(SeaTunnelRow row, String label) {
         IdStrategy strategy = schemaConfig.getIdStrategy();
         if (strategy == null || strategy == IdStrategy.AUTOMATIC) {
             return null;
@@ -156,25 +163,35 @@ public class VertexMapper implements GraphDataMapper {
         }
     }
 
-    private List<Object> getFieldValues(SeaTunnelRow row, List<String> fieldNames) {
-        return fieldNames.stream()
-                .map(
-                        name -> {
-                            Integer index = fieldsIndex.get(name);
-                            E.checkArgument(
-                                    index != null,
-                                    "Cannot find ID field '%s' in SeaTunnelRowType.",
-                                    name);
-                            return row.getField(index);
-                        })
-                .collect(Collectors.toList());
+    private List<Object> getFieldValues(SeaTunnelRow row, List<String> fields) {
+        List<Object> values = new ArrayList<>(fields.size());
+
+        for (Map.Entry<String, Integer> fieldEntry : fieldsIndex.entrySet()) {
+            String FieldName = fieldEntry.getKey();
+            String PropertyName =
+                    mappingConfig.getFieldMapping().getOrDefault(FieldName, FieldName);
+
+            if (!fields.contains(PropertyName)) {
+                continue;
+            }
+
+            PropertyKey propertykey = client.getPropertyKey(PropertyName);
+            Object fieldValue =
+                    DataTypeUtil.convert(
+                            row.getField(fieldEntry.getValue()),
+                            propertykey,
+                            mappingConfig.getDateFormat(),
+                            mappingConfig.getTimeZone());
+            values.add(getMappedValue(fieldValue));
+        }
+        return values;
     }
 
     private boolean isConsideredNull(Object value) {
         if (value == null) {
             return true;
         }
-        List<String> nullValues = mappingConfig.getNull_values();
+        List<String> nullValues = mappingConfig.getNullValues();
         if (nullValues == null || nullValues.isEmpty()) {
             return false;
         }
@@ -182,23 +199,17 @@ public class VertexMapper implements GraphDataMapper {
     }
 
     private Object getMappedValue(Object originalValue) {
-        Map<Object, Object> valueMapping = mappingConfig.getValue_mapping();
-        if (valueMapping == null || valueMapping.isEmpty()) {
+        Map<Object, Object> valueMapping = mappingConfig.getValueMapping();
+        if (valueMapping.isEmpty()) {
             return originalValue;
         }
         return valueMapping.getOrDefault(originalValue, originalValue);
     }
 
-    // Simplified from hugegraph-loader's ElementBuilder.
-    // It should use label id instead of name, here is a compromise.
     private String spliceVertexId(List<Object> primaryValues) {
-        // 1. 使用 Stream API 將 List<Object> 中的所有元素转换为 String，使用 "!" 连接
         String joinedValues =
-                primaryValues.stream()
-                        .map(Object::toString) // 將每個元素轉換為字串
-                        .collect(Collectors.joining("!")); // 用 "!" 作为分隔符连接
+                primaryValues.stream().map(Object::toString).collect(Collectors.joining("!"));
 
-        // 2. 使用 String.format() 將 label 和拼接好的字串組合起來
         return String.format("%s:%s", labelId, joinedValues);
     }
 }

@@ -44,13 +44,13 @@ public class SchemaConfig implements Serializable {
     private String enableLabelIndex;
     private Map<String, Object> userdata;
 
-    // Vertex Label config
+    // VertexLabel config
     private IdStrategy idStrategy; // CUSTOMIZE_UUID or PRIMARY_KEY
     private List<String> idFields;
 
-    // Edge Label Config
-    private SourceTargetConfig source;
-    private SourceTargetConfig target;
+    // EdgeLabel Config
+    private SourceTargetConfig sourceConfig;
+    private SourceTargetConfig targetConfig;
     private Frequency frequency;
     private List<String> sortKeys;
 

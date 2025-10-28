@@ -31,7 +31,6 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.GraphDataMappe
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.VertexMapper;
 
 import org.apache.hugegraph.structure.GraphElement;
-import org.apache.hugegraph.structure.graph.Edge;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +89,6 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
             GraphElement element = mapper.map(row);
             buffer.add(element);
         } catch (Exception e) {
-
             if (e instanceof IOException) {
                 throw (IOException) e;
             }
@@ -101,13 +99,13 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
     private void handleDelete(SeaTunnelRow row) throws IOException {
         try {
             buffer.flush();
-            // TODO: 考虑是否引入batch删除
+            // TODO: Consider batch delete?
             if (sinkConfig.getSchemaConfig().getType() == LabelType.VERTEX) {
                 Object vertexId = mapper.extractId(row);
                 client.deleteVertexWithEdges(vertexId);
             } else {
-                Edge edge = (Edge) mapper.map(row);
-                client.deleteEdge(edge);
+                String edgeId = (String) mapper.extractId(row);
+                client.deleteEdge(edgeId);
             }
         } catch (Exception e) {
             throw new IOException(e);
@@ -119,8 +117,6 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
         try {
             buffer.flush();
         } catch (IOException e) {
-            // 当 prepareCommit 阶段的 flush 失败时，我们必须让整个任务失败，
-            // 否则会导致数据丢失（Source 提交了，Sink 没写入）。
             LOG.error("Failed to flush data during prepareCommit, failing checkpoint.", e);
             throw new RuntimeException("Failed to flush data during prepareCommit()", e);
         }

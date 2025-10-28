@@ -24,6 +24,7 @@ import org.apache.seatunnel.api.table.factory.TableSinkFactory;
 import org.apache.seatunnel.api.table.factory.TableSinkFactoryContext;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphOptions;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkConfig;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkOptions;
 
 import com.google.auto.service.AutoService;
 
@@ -51,9 +52,10 @@ public class HugeGraphSinkFactory implements TableSinkFactory {
                         HugeGraphOptions.USERNAME,
                         HugeGraphOptions.PASSWORD)
                 // mapping config
-                .required(HugeGraphOptions.PROPERTY_MAPPING)
-                .exclusive(HugeGraphOptions.SELECTED_FIELDS, HugeGraphOptions.IGNORED_FIELDS)
-                .required(HugeGraphOptions.SCHEMA_CONFIG)
+                .required(HugeGraphSinkOptions.PROPERTY_MAPPING)
+                .exclusive(
+                        HugeGraphSinkOptions.SELECTED_FIELDS, HugeGraphSinkOptions.IGNORED_FIELDS)
+                .required(HugeGraphSinkOptions.SCHEMA_CONFIG)
                 // batch config
                 .optional(HugeGraphOptions.BATCH_SIZE, HugeGraphOptions.BATCH_INTERVAL_MS)
                 // error operation

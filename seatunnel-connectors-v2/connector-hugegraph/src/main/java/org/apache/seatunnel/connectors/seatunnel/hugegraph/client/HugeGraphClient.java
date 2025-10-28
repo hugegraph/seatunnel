@@ -21,10 +21,13 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkC
 
 import org.apache.hugegraph.driver.HugeClient;
 import org.apache.hugegraph.driver.SchemaManager;
+import org.apache.hugegraph.driver.TraverserManager;
 import org.apache.hugegraph.exception.ServerException;
 import org.apache.hugegraph.rest.ClientException;
+import org.apache.hugegraph.structure.constant.IdStrategy;
 import org.apache.hugegraph.structure.graph.Edge;
 import org.apache.hugegraph.structure.graph.Vertex;
+import org.apache.hugegraph.structure.schema.EdgeLabel;
 import org.apache.hugegraph.structure.schema.PropertyKey;
 import org.apache.hugegraph.structure.schema.VertexLabel;
 
@@ -43,10 +46,12 @@ public final class HugeGraphClient {
 
     private final HugeClient client;
     @Getter private final SchemaManager schema;
+    private final TraverserManager traverser;
 
     public HugeGraphClient(HugeGraphSinkConfig config) {
         this.client = createClient(config);
         this.schema = client.schema();
+        this.traverser = client.traverser();
     }
 
     private static HugeClient createClient(HugeGraphSinkConfig config) {
@@ -105,6 +110,16 @@ public final class HugeGraphClient {
         return String.valueOf(vertexLabel.id());
     }
 
+    public String getEdgeLabel(String label) {
+        EdgeLabel edgeLabel = this.client.schema().getEdgeLabel(label);
+        return String.valueOf(edgeLabel.id());
+    }
+
+    public IdStrategy getIdStrategy(String label) {
+        VertexLabel vertexLabel = this.client.schema().getVertexLabel(label);
+        return vertexLabel.idStrategy();
+    }
+
     public void writeVertex(Vertex vertex) throws IOException {
         try {
             this.client.graph().addVertex(vertex);
@@ -159,9 +174,9 @@ public final class HugeGraphClient {
         }
     }
 
-    public void deleteEdge(Edge edge) throws IOException {
+    public void deleteEdge(String edgeId) throws IOException {
         try {
-            this.client.graph().removeEdge(edge.id());
+            this.client.graph().removeEdge(edgeId);
         } catch (ServerException | ClientException e) {
             LOG.error(
                     "Failed to delete edge (will trigger task restart). Error: {}",
@@ -231,18 +246,14 @@ public final class HugeGraphClient {
                     "Unknown error batch writing edge (will trigger task restart). Error: {}",
                     e.getMessage(),
                     e);
-            throw new IOException("Unknown error batch writing dege", e);
+            throw new IOException("Unknown error batch writing edge", e);
         }
     }
 
-    public void close() throws IOException {
+    public void close() {
         if (this.client != null) {
-            try {
-                LOG.info("Closing HugeClient singleton instance.");
-                this.client.close();
-            } catch (Exception e) {
-                LOG.error("Error closing HugeClient instance.", e);
-            }
+            LOG.info("Closing HugeClient singleton instance.");
+            this.client.close();
         }
     }
 }

@@ -80,8 +80,10 @@ class HugeGraphSinkConfigTest {
         when(mockConfig.getOptional(HugeGraphOptions.PASSWORD))
                 .thenReturn(Optional.empty()); // 模拟密码不存在
         when(mockConfig.getOptional(HugeGraphOptions.GRAPH_SPACE)).thenReturn(Optional.empty());
-        when(mockConfig.getOptional(HugeGraphOptions.SELECTED_FIELDS)).thenReturn(Optional.empty());
-        when(mockConfig.getOptional(HugeGraphOptions.IGNORED_FIELDS)).thenReturn(Optional.empty());
+        when(mockConfig.getOptional(HugeGraphSinkOptions.SELECTED_FIELDS))
+                .thenReturn(Optional.empty());
+        when(mockConfig.getOptional(HugeGraphSinkOptions.IGNORED_FIELDS))
+                .thenReturn(Optional.empty());
 
         // --- 2. Act (执行阶段) ---
         // 调用我们要测试的静态方法
@@ -155,7 +157,7 @@ class HugeGraphSinkConfigTest {
     @Disabled(
             "This test is consistently failing due to a complex environment-specific configuration issue.")
     void testSingleSchemaObjectFromFile() throws URISyntaxException, java.io.IOException {
-        URL resource = HugeGraphSinkConfigTest.class.getResource("/hugegraph_single_schema.conf");
+        URL resource = HugeGraphSinkConfigTest.class.getResource("/hugegraph_test.conf");
         Assertions.assertNotNull(resource);
 
         String configString =
@@ -183,7 +185,7 @@ class HugeGraphSinkConfigTest {
         MappingConfig mapping = schemaConfig.getMapping();
         Assertions.assertNotNull(mapping);
 
-        Map<String, String> fieldMapping = mapping.getField_mapping();
+        Map<String, String> fieldMapping = mapping.getFieldMapping();
         Assertions.assertNotNull(fieldMapping);
         Assertions.assertEquals(2, fieldMapping.size());
         Assertions.assertEquals("person_name", fieldMapping.get("name"));
@@ -285,14 +287,16 @@ class HugeGraphSinkConfigTest {
         assertEquals("knows", schemaConfig.getLabel());
         assertEquals("db1.person_friends", schemaConfig.getTablePath());
 
-        assertNotNull(schemaConfig.getSource());
-        assertEquals("person", schemaConfig.getSource().getLabel());
+        assertNotNull(schemaConfig.getSourceConfig());
+        assertEquals("person", schemaConfig.getSourceConfig().getLabel());
         assertEquals(
-                Collections.singletonList("person_id"), schemaConfig.getSource().getIdFields());
+                Collections.singletonList("person_id"),
+                schemaConfig.getSourceConfig().getIdFields());
 
-        assertNotNull(schemaConfig.getTarget());
-        assertEquals("person", schemaConfig.getTarget().getLabel());
+        assertNotNull(schemaConfig.getTargetConfig());
+        assertEquals("person", schemaConfig.getTargetConfig().getLabel());
         assertEquals(
-                Collections.singletonList("friend_id"), schemaConfig.getTarget().getIdFields());
+                Collections.singletonList("friend_id"),
+                schemaConfig.getTargetConfig().getIdFields());
     }
 }

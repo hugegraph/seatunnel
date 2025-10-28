@@ -63,12 +63,13 @@ public class HugeGraphSinkConfig implements Serializable {
         sinkConfig.setRetryBackoffMs(
                 config.getOptional(HugeGraphOptions.RETRY_BACKOFF_MS)
                         .orElse(HugeGraphOptions.RETRY_BACKOFF_MS.defaultValue()));
-        sinkConfig.setPropertyMapping(config.get(HugeGraphOptions.PROPERTY_MAPPING));
-        sinkConfig.setSchemaConfig(config.get(HugeGraphOptions.SCHEMA_CONFIG));
+        sinkConfig.setPropertyMapping(config.get(HugeGraphSinkOptions.PROPERTY_MAPPING));
+        sinkConfig.setSchemaConfig(config.get(HugeGraphSinkOptions.SCHEMA_CONFIG));
 
-        config.getOptional(HugeGraphOptions.SELECTED_FIELDS)
+        config.getOptional(HugeGraphSinkOptions.SELECTED_FIELDS)
                 .ifPresent(sinkConfig::setSelectedFields);
-        config.getOptional(HugeGraphOptions.IGNORED_FIELDS).ifPresent(sinkConfig::setIgnoredFields);
+        config.getOptional(HugeGraphSinkOptions.IGNORED_FIELDS)
+                .ifPresent(sinkConfig::setIgnoredFields);
 
         config.getOptional(HugeGraphOptions.GRAPH_SPACE).ifPresent(sinkConfig::setGraphSpace);
         config.getOptional(HugeGraphOptions.USERNAME).ifPresent(sinkConfig::setUsername);

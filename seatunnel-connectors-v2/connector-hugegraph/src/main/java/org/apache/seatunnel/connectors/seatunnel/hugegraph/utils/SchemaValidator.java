@@ -22,6 +22,7 @@ import org.apache.seatunnel.api.table.type.SeaTunnelDataType;
 import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkConfig;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.LabelType;
 
@@ -31,6 +32,7 @@ import org.apache.hugegraph.structure.schema.EdgeLabel;
 import org.apache.hugegraph.structure.schema.PropertyKey;
 import org.apache.hugegraph.structure.schema.VertexLabel;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -59,11 +61,10 @@ public final class SchemaValidator {
                 throw new IllegalArgumentException(
                         "Unsupported schema type: " + schemaConfig.getType());
             }
-
-            client.close();
-
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            client.close();
         }
     }
 
@@ -93,19 +94,19 @@ public final class SchemaValidator {
     private void validateSourceTarget(SchemaConfig schemaConfig, EdgeLabel edgeLabel) {
         String label = schemaConfig.getLabel();
         String schemaSource = edgeLabel.sourceLabel();
-        if (!schemaSource.equals(schemaConfig.getSource().getLabel())) {
+        if (!schemaSource.equals(schemaConfig.getSourceConfig().getLabel())) {
             throw new IllegalArgumentException(
                     String.format(
                             "EdgeLabel[%s] sourceLabel mismatch: schema=%s, config=%s",
-                            label, schemaSource, schemaConfig.getSource()));
+                            label, schemaSource, schemaConfig.getSourceConfig()));
         }
 
         String schemaTarget = edgeLabel.targetLabel();
-        if (!schemaTarget.equals(schemaConfig.getTarget().getLabel())) {
+        if (!schemaTarget.equals(schemaConfig.getTargetConfig().getLabel())) {
             throw new IllegalArgumentException(
                     String.format(
                             "EdgeLabel[%s] targetLabel mismatch: schema=%s, config=%s",
-                            label, schemaTarget, schemaConfig.getTarget()));
+                            label, schemaTarget, schemaConfig.getTargetConfig()));
         }
     }
 
@@ -118,18 +119,22 @@ public final class SchemaValidator {
             SchemaConfig schemaConfig,
             Set<String> hugegraphProperties) {
 
-        Map<String, String> field_mapping = schemaConfig.getMapping().getField_mapping();
+        MappingConfig mappingConfig = schemaConfig.getMapping();
+        Map<String, String> fieldMapping =
+                mappingConfig == null || mappingConfig.getFieldMapping() == null
+                        ? Collections.emptyMap()
+                        : mappingConfig.getFieldMapping();
 
         for (int i = 0; i < rowType.getTotalFields(); i++) {
             String sourceFieldName = rowType.getFieldName(i);
             SeaTunnelDataType<?> seaTunnelType = rowType.getFieldType(i);
 
             // Skip fields that are not in the mapping
-            if (!field_mapping.containsKey(sourceFieldName)) {
+            if (!fieldMapping.containsKey(sourceFieldName)) {
                 continue;
             }
 
-            String targetPropertyName = field_mapping.get(sourceFieldName);
+            String targetPropertyName = fieldMapping.get(sourceFieldName);
 
             // 1. Check if the property exists in HugeGraph
             if (!hugegraphProperties.contains(targetPropertyName)) {

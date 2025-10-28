@@ -35,7 +35,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-/** 一个用于向 HugeGraph 批量写入数据的缓冲区。 它支持按批次大小和时间间隔两种策略触发写入操作。 这个类是线程安全的。 */
 public class BatchBuffer implements AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(BatchBuffer.class);
@@ -49,13 +48,6 @@ public class BatchBuffer implements AutoCloseable {
     private volatile Exception flushException;
     private final HugeGraphClient client;
 
-    /**
-     * 构造函数
-     *
-     * @param client 用于写入 HugeGraph 的客户端实例
-     * @param batchSize 每个批次的最大大小。当缓冲区中的元素数量达到此值时，将触发一次写入。
-     * @param batchIntervalMs 批处理的最大时间间隔（毫秒）。如果设置为大于 0 的值， 会有一个后台线程定期检查并刷新缓冲区。
-     */
     public BatchBuffer(HugeGraphClient client, int batchSize, long batchIntervalMs) {
 
         this.batchSize = batchSize;
@@ -73,10 +65,8 @@ public class BatchBuffer implements AutoCloseable {
                     this.scheduler.scheduleAtFixedRate(
                             () -> {
                                 try {
-                                    // 定期 flush，即使缓冲区未满
                                     flush();
                                 } catch (Exception e) {
-                                    // 记录后台线程中的异常，以便主线程可以感知到
                                     flushException = e;
                                 }
                             },
@@ -89,12 +79,6 @@ public class BatchBuffer implements AutoCloseable {
         }
     }
 
-    /**
-     * 将图元素添加到缓冲区。如果缓冲区大小达到阈值，则触发 flush。
-     *
-     * @param element 要添加的图元素
-     * @throws IOException 如果后台刷新任务失败或本次刷新失败
-     */
     public synchronized void add(GraphElement element) throws IOException {
         checkFlushException();
         if (closed) {
@@ -104,7 +88,6 @@ public class BatchBuffer implements AutoCloseable {
         try {
             buffer.add(element);
             if (buffer.size() >= batchSize) {
-                // 在持有锁的情况下调用内部 flush 方法
                 doFlush();
             }
         } catch (Exception e) {
@@ -112,11 +95,6 @@ public class BatchBuffer implements AutoCloseable {
         }
     }
 
-    /**
-     * 将缓冲区中的数据提交到 HugeGraph。
-     *
-     * @throws IOException 如果写入 HugeGraph 失败
-     */
     public synchronized void flush() throws IOException {
         checkFlushException();
         if (closed && buffer.isEmpty()) {
@@ -125,11 +103,6 @@ public class BatchBuffer implements AutoCloseable {
         doFlush();
     }
 
-    /**
-     * 执行实际的刷新操作，此方法假定调用者已经持有了锁。
-     *
-     * @throws IOException 如果写入操作失败
-     */
     private void doFlush() throws IOException {
         if (buffer.isEmpty()) {
             return;
@@ -147,7 +120,7 @@ public class BatchBuffer implements AutoCloseable {
                         buffer.stream().map(element -> (Edge) element).collect(Collectors.toList());
                 client.batchWriteEdges(edges);
             }
-            // 写入成功后清空缓冲区
+
             buffer.clear();
         } catch (Exception e) {
             LOG.error("Failed to write batch data to HugeGraph", e);
@@ -155,11 +128,6 @@ public class BatchBuffer implements AutoCloseable {
         }
     }
 
-    /**
-     * 关闭 BatchBuffer，停止定时任务并执行最后一次 flush，以确保所有缓冲数据都被写入。
-     *
-     * @throws IOException 如果最后的 flush 操作失败
-     */
     @Override
     public void close() throws IOException {
         synchronized (this) {
@@ -169,7 +137,6 @@ public class BatchBuffer implements AutoCloseable {
             closed = true;
         }
 
-        // 停止定时调度
         if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
         }
@@ -185,14 +152,12 @@ public class BatchBuffer implements AutoCloseable {
             }
         }
 
-        // 在关闭前确保所有缓冲的数据都被提交
         LOG.info("Closing BatchBuffer, performing final flush...");
         flush();
         checkFlushException();
         LOG.info("BatchBuffer closed.");
     }
 
-    /** 检查后台线程中是否有异常发生，并在主线程中重新抛出。 */
     private void checkFlushException() throws IOException {
         if (flushException != null) {
             throw new IOException("An error occurred during asynchronous flush", flushException);

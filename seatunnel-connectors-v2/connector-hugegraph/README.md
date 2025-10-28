@@ -31,7 +31,7 @@ This connector supports writing data as vertices or edges, providing flexible ma
 | `max_retries` | Integer | No | 3 | The maximum number of times to retry a failed write operation. |
 | `retry_backoff_ms` | Integer | No | 1000 | The initial backoff time in milliseconds for retries. |
 
-### Schema Configuration (`schema`)
+### Schema Configuration (`schema_config`)
 
 Each object in the `schema` list defines a mapping from the source data to a specific vertex or edge label in HugeGraph.
 
@@ -39,7 +39,7 @@ Each object in the `schema` list defines a mapping from the source data to a spe
 | --- | --- | --- | --- | --- |
 | `type` | String | Yes | - | The type of graph element to map to. Can be `VERTEX` or `EDGE`. |
 | `label` | String | Yes | - | The label of the vertex or edge in HugeGraph. |
-| `idStrategy` | String | For Vertex | - | The ID generation strategy for vertices. Supported values: `PRIMARY_key`, `CUSTOMIZE_STRING`, `CUSTOMIZE_NUMBER`, `CUSTOMIZE_UUID`, `AUTOMATIC`. |
+| `idStrategy` | String | For Vertex | - | The ID generation strategy for vertices. Supported values: `PRIMARY_key`, `CUSTOMIZE_STRING`, `CUSTOMIZE_NUMBER`, `CUSTOMIZE_UUID`. |
 | `idFields` | List<String> | For Vertex | - | A list of source field names used to generate the vertex ID, required for all `idStrategy` except `AUTOMATIC`. |
 | `source` | Object | For Edge | - | An object defining the mapping for the edge's source vertex. See `Source/Target Config` below. |
 | `target` | Object | For Edge | - | An object defining the mapping for the edge's target vertex. See `Source/Target Config` below. |
@@ -49,20 +49,22 @@ Each object in the `schema` list defines a mapping from the source data to a spe
 
 This object is used within an `EDGE` schema to define how to identify the source and target vertices.
 
-| Name | Type | Required | Default Value | Description |
-| --- | --- | --- | --- | --- |
-| `label` | String | Yes | - | The label of the source or target vertex. |
-| `idFields` | List<String> | Yes | - | A list of source field names from the input row used to construct the ID of the source/target vertex. The values will be concatenated to form the vertex ID. |
+| Name | Type | Required | Default Value | Description                                                                                                                                              |
+| --- | --- | --- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `label` | String | Yes | - | The label of the source or target vertex.                                                                                                                |
+| `idFields` | List<String> | Yes | - | A list of property names from the input row used to construct the ID of the source/target vertex. The values will be concatenated to form the vertex ID. |
 
 ### Mapping Config (`mapping`)
 
 This object provides advanced control over how fields and values are mapped to properties.
 
-| Name | Type | Required | Default Value | Description |
-| --- | --- | --- | --- | --- |
-| `field_mapping` | Map<String, String> | No | - | A map where the key is the source field name and the value is the target property name in HugeGraph. If not specified, the source field name is used as the target property name. |
-| `value_mapping` | Map<String, String> | No | - | A map to transform specific field values. The key is the original value from the source, and the value is the new value to be written. |
-| `null_values` | List<String> | No | - | A list of string values that should be treated as `null`. Any field containing one of these values will not be written. |
+| Name              | Type | Required | Default Value | Description                                                                                                                                                                       |
+|-------------------| --- |----------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `fieldMapping`    | Map<String, String> | No       | -        | A map where the key is the source field name and the value is the target property name in HugeGraph. If not specified, the source field name is used as the target property name. |
+| `valueMapping`    | Map<String, String> | No       | -        | A map to transform specific field values. The key is the original value from the source, and the value is the new value to be written.                                            |
+| `nullValues`      | List<String> | No       | -        | A list of string values that should be treated as `null`. Any field containing one of these values will not be written.                                                           |
+| `sourceIdMapping` | Map<String, String> | For Edge | -        | A map where the key is the source field name and the value is the target property name in HugeGraph. Only include source vertex idFields                                          |
+| `targetIdMapping` | Map<String, String> | For Edge | -        | A map where the key is the source field name and the value is the target property name in HugeGraph. Only include target vertex idFields                                          |
 
 ## Relational to Graph Mapping Explained
 
@@ -90,12 +92,15 @@ This example shows how to read from a `FakeSource` and write `person` vertices t
 
 ```hocon
 env {
+  parallelism = 1
   job.mode = "BATCH"
 }
 
 source {
   FakeSource {
-    result_table_name = "fake"
+    parallelism = 1
+    plugin_output = "fake"
+    row.num = 16
     schema = {
       fields = {
         name = "string"
@@ -109,15 +114,24 @@ sink {
   HugeGraph {
     host = "localhost"
     port = 8080
-    graph = "hugegraph"
-    schema = [
-      {
-        type = "VERTEX"
-        label = "person"
-        idStrategy = "PRIMARY_KEY"
-        idFields = ["name"]
+    graph_name = "hugegraph"
+    selected_fields = ["name", "age"]
+    property_mapping = {
+      "name":"name"
+      "age":"age"
+    }
+    schema_config = {
+      type = "VERTEX"
+      label = "person"
+      idStrategy = PRIMARY_KEY
+      idFields = ["name"]
+      mapping = {
+        field_mapping = {
+          name = "name"
+          age = "age"
+        }
       }
-    ]
+    }
   }
 }
 ```
@@ -133,7 +147,7 @@ env {
 
 source {
   FakeSource {
-    result_table_name = "fake_edge"
+    plugin_output = "fake"
     schema = {
       fields = {
         person1_name = "string"
