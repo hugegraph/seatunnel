@@ -254,8 +254,6 @@ public class EdgeMapper implements GraphDataMapper {
                         row, schemaConfig.getTargetConfig(), mappingConfig.getTargetIdMapping());
         String sortedKeyValues = getSortedKeyValues(row);
 
-        System.out.println(sourceId);
-        System.out.println(targetId);
         return String.format("S%s>%s>%s>>S%s", sourceId, labelId, sortedKeyValues, targetId);
     }
 }
