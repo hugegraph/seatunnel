@@ -63,8 +63,8 @@ This object provides advanced control over how fields and values are mapped to p
 | `fieldMapping`    | Map<String, String> | No       | -        | A map where the key is the source field name and the value is the target property name in HugeGraph. If not specified, the source field name is used as the target property name. |
 | `valueMapping`    | Map<String, String> | No       | -        | A map to transform specific field values. The key is the original value from the source, and the value is the new value to be written.                                            |
 | `nullValues`      | List<String> | No       | -        | A list of string values that should be treated as `null`. Any field containing one of these values will not be written.                                                           |
-| `sourceIdMapping` | Map<String, String> | For Edge | -        | A map where the key is the source field name and the value is the target property name in HugeGraph. Only include source vertex idFields                                          |
-| `targetIdMapping` | Map<String, String> | For Edge | -        | A map where the key is the source field name and the value is the target property name in HugeGraph. Only include target vertex idFields                                          |
+| `sourceIdMapping` | Map<String, String> | For Edge | -        | A mapping that pertains only to the source_vertex ID of the edge element, where the key is the source field name and the value is the target property name in HugeGraph.          |
+| `targetIdMapping` | Map<String, String> | For Edge | -        | A mapping that pertains only to the target_vertex ID of the edge element, where the key is the source field name and the value is the target property name in HugeGraph.          |
 
 ## Relational to Graph Mapping Explained
 
@@ -162,26 +162,36 @@ sink {
   HugeGraph {
     host = "localhost"
     port = 8080
-    graph = "hugegraph"
-    schema = [
-      {
-        type = "EDGE"
-        label = "knows"
-        source = {
-          label = "person"
-          idFields = ["person1_name"]
+    graph_name = "hugegraph"
+    selected_fields = ["src_name", "tgt_name", "duration"]
+    property_mapping = {
+      "src_name":"name"
+      "tgt_name":"name"
+      "duration":"duration"
+    }
+    schema_config = {
+      type = "EDGE"
+      label = "knows"
+      sourceConfig = {
+        label:"person"
+        idFields:["name"]
+      }
+      targetConfig = {
+        label:"person"
+        idFields:["name"]
+      }
+      mapping = {
+        fieldMapping = {
+          duration:"duration"
         }
-        target = {
-          label = "person"
-          idFields = ["person2_name"]
+        sourceMapping = {
+          src_name:"name"
         }
-        mapping = {
-          field_mapping = {
-            since = "date"
-          }
+        targetMapping = {
+          tgt_name:"name"
         }
       }
-    ]
+    }
   }
 }
 ```
