@@ -174,3 +174,7 @@ sink {
   }
 }
 ```
+
+## Changelog
+
+<ChangeLog />

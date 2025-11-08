@@ -131,7 +131,7 @@ public class EdgeMapper implements GraphDataMapper {
 
     private Object buildVertexId(SeaTunnelRow row, SourceTargetConfig config) {
 
-        String LabelId = client.getVertexLabel(config.getLabel());
+        String vertexLabelId = client.getVertexLabel(config.getLabel());
         IdStrategy strategy = client.getIdStrategy(config.getLabel());
         if (strategy == null || strategy == IdStrategy.AUTOMATIC) {
             return null;
@@ -141,21 +141,24 @@ public class EdgeMapper implements GraphDataMapper {
         switch (strategy) {
             case PRIMARY_KEY:
                 List<Object> pkValues = getFieldValues(row, idFields);
-                if (pkValues.stream().anyMatch(this::isConsideredNull)) {
+                if (pkValues.size() != idFields.size()
+                        || pkValues.stream().anyMatch(this::isConsideredNull)) {
                     return null;
                 }
-                return spliceVertexId(LabelId, pkValues);
+                return spliceVertexId(vertexLabelId, pkValues);
             case CUSTOMIZE_STRING:
                 List<Object> stringValues = getFieldValues(row, idFields);
-                if (stringValues.stream().anyMatch(this::isConsideredNull)) {
+                if (stringValues.size() != idFields.size()
+                        || stringValues.stream().anyMatch(this::isConsideredNull)) {
                     return null;
                 }
                 return stringValues.stream().map(String::valueOf).collect(Collectors.joining(":"));
             case CUSTOMIZE_NUMBER:
-                E.checkArgument(
-                        idFields.size() == 1,
-                        "CUSTOMIZE_NUMBER strategy requires exactly one ID field.");
-                Object numValue = getFieldValues(row, idFields).get(0);
+                List<Object> numberValues = getFieldValues(row, idFields);
+                if (numberValues.size() != 1) {
+                    return null;
+                }
+                Object numValue = numberValues.get(0);
                 if (isConsideredNull(numValue)) {
                     return null;
                 }
@@ -165,10 +168,11 @@ public class EdgeMapper implements GraphDataMapper {
                     return Long.parseLong(String.valueOf(numValue));
                 }
             case CUSTOMIZE_UUID:
-                E.checkArgument(
-                        idFields.size() == 1,
-                        "CUSTOMIZE_UUID strategy requires exactly one ID field.");
-                Object uuidValue = getFieldValues(row, idFields).get(0);
+                List<Object> uuidValues = getFieldValues(row, idFields);
+                if (uuidValues.size() != 1) {
+                    return null;
+                }
+                Object uuidValue = uuidValues.get(0);
                 if (isConsideredNull(uuidValue)) {
                     return null;
                 }
@@ -230,10 +234,10 @@ public class EdgeMapper implements GraphDataMapper {
         return valueMapping.getOrDefault(originalValue, originalValue);
     }
 
-    private String spliceVertexId(String labelId, List<Object> primaryValues) {
+    private String spliceVertexId(String vertexLabelId, List<Object> primaryValues) {
         String joinedValues =
                 primaryValues.stream().map(Object::toString).collect(Collectors.joining("!"));
-        return String.format("%s:%s", labelId, joinedValues);
+        return String.format("%s:%s", vertexLabelId, joinedValues);
     }
 
     private String getSortedKeyValues(SeaTunnelRow row) {

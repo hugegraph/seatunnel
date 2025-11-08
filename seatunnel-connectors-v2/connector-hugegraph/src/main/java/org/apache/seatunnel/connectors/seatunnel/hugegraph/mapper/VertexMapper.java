@@ -136,21 +136,24 @@ public class VertexMapper implements GraphDataMapper {
         switch (strategy) {
             case PRIMARY_KEY:
                 List<Object> pkValues = getFieldValues(row, idFields);
-                if (pkValues.stream().anyMatch(this::isConsideredNull)) {
+                if (pkValues.size() != idFields.size()
+                        || pkValues.stream().anyMatch(this::isConsideredNull)) {
                     return null;
                 }
                 return spliceVertexId(pkValues);
             case CUSTOMIZE_STRING:
                 List<Object> stringValues = getFieldValues(row, idFields);
-                if (stringValues.stream().anyMatch(this::isConsideredNull)) {
+                if (stringValues.size() != idFields.size()
+                        || stringValues.stream().anyMatch(this::isConsideredNull)) {
                     return null;
                 }
                 return stringValues.stream().map(String::valueOf).collect(Collectors.joining(":"));
             case CUSTOMIZE_NUMBER:
-                E.checkArgument(
-                        idFields.size() == 1,
-                        "CUSTOMIZE_NUMBER strategy requires exactly one ID field.");
-                Object numValue = getFieldValues(row, idFields).get(0);
+                List<Object> numberValues = getFieldValues(row, idFields);
+                if (numberValues.size() != 1) {
+                    return null;
+                }
+                Object numValue = numberValues.get(0);
                 if (isConsideredNull(numValue)) {
                     return null;
                 }
@@ -160,10 +163,11 @@ public class VertexMapper implements GraphDataMapper {
                     return Long.parseLong(String.valueOf(numValue));
                 }
             case CUSTOMIZE_UUID:
-                E.checkArgument(
-                        idFields.size() == 1,
-                        "CUSTOMIZE_UUID strategy requires exactly one ID field.");
-                Object uuidValue = getFieldValues(row, idFields).get(0);
+                List<Object> uuidValues = getFieldValues(row, idFields);
+                if (uuidValues.size() != 1) {
+                    return null;
+                }
+                Object uuidValue = uuidValues.get(0);
                 if (isConsideredNull(uuidValue)) {
                     return null;
                 }
