@@ -36,7 +36,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
         implements SupportMultiTableSinkWriter<Void> {
@@ -46,7 +53,6 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
     private final HugeGraphSinkConfig sinkConfig;
     private final GraphDataMapper mapper;
     private final HugeGraphClient client;
-
     private final BatchBuffer buffer;
 
     public HugeGraphSinkWriter(HugeGraphSinkConfig sinkConfig, SeaTunnelRowType rowType) {
@@ -60,10 +66,40 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
 
     private GraphDataMapper getMapper(SeaTunnelRowType rowType) {
         SchemaConfig schemaConfig = sinkConfig.getSchemaConfig();
-        if (schemaConfig.getType() == LabelType.VERTEX) {
-            return new VertexMapper(schemaConfig, rowType, client);
+        List<String> selectedFields = sinkConfig.getSelectedFields();
+        List<String> ignoredFields = sinkConfig.getIgnoredFields();
+        Map<String, Integer> originalFieldsIndex =
+                IntStream.range(0, rowType.getTotalFields())
+                        .boxed()
+                        .collect(Collectors.toMap(rowType::getFieldName, i -> i));
+
+        Map<String, Integer> finalFieldsIndex = new LinkedHashMap<>();
+
+        if (selectedFields != null && !selectedFields.isEmpty()) {
+            for (String field : selectedFields) {
+                Integer originalIndex = originalFieldsIndex.get(field);
+                if (originalIndex != null) {
+                    finalFieldsIndex.put(field, originalIndex);
+                }
+            }
+        } else if (ignoredFields != null && !ignoredFields.isEmpty()) {
+            Set<String> ignoreSet = new HashSet<>(ignoredFields);
+            for (Map.Entry<String, Integer> entry : originalFieldsIndex.entrySet()) {
+                String fieldName = entry.getKey();
+                Integer originalIndex = entry.getValue();
+
+                if (!ignoreSet.contains(fieldName)) {
+                    finalFieldsIndex.put(fieldName, originalIndex);
+                }
+            }
         } else {
-            return new EdgeMapper(schemaConfig, rowType, client);
+            finalFieldsIndex = originalFieldsIndex;
+        }
+
+        if (schemaConfig.getType() == LabelType.VERTEX) {
+            return new VertexMapper(schemaConfig, finalFieldsIndex, client);
+        } else {
+            return new EdgeMapper(schemaConfig, finalFieldsIndex, client);
         }
     }
 
@@ -99,12 +135,19 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
     private void handleDelete(SeaTunnelRow row) throws IOException {
         try {
             buffer.flush();
-            // TODO: Consider batch delete?
             if (sinkConfig.getSchemaConfig().getType() == LabelType.VERTEX) {
                 Object vertexId = mapper.extractId(row);
+                if (vertexId == null) {
+                    LOG.warn("Cannot delete vertex: ID extraction failed for row {}", row);
+                    return;
+                }
                 client.deleteVertexWithEdges(vertexId);
             } else {
                 String edgeId = (String) mapper.extractId(row);
+                if (edgeId == null) {
+                    LOG.warn("Cannot delete edge: ID extraction failed for row {}", row);
+                    return;
+                }
                 client.deleteEdge(edgeId);
             }
         } catch (Exception e) {

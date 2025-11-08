@@ -47,7 +47,6 @@ import org.testcontainers.utility.DockerImageName;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -80,7 +79,7 @@ public class HugeGraphIT {
     @Container
     private static final GenericContainer<?> HUGE_GRAPH_CONTAINER =
             new GenericContainer<>(DockerImageName.parse(HUGE_GRAPH_IMAGE))
-                    .withExposedPorts(8080, 8182)
+                    .withExposedPorts(8080)
                     .waitingFor(Wait.forHttp("/graphs").forPort(8080).forStatusCode(200))
                     .withStartupTimeout(Duration.ofMinutes(3));
 
@@ -249,11 +248,11 @@ public class HugeGraphIT {
 
         SourceTargetConfig sourceConfig = new SourceTargetConfig();
         sourceConfig.setLabel(VERTEX_LABEL_PERSON);
-        sourceConfig.setIdFields(Collections.singletonList("name"));
+        sourceConfig.setIdFields(Collections.singletonList("src_name"));
 
         SourceTargetConfig targetConfig = new SourceTargetConfig();
         targetConfig.setLabel(VERTEX_LABEL_PERSON);
-        targetConfig.setIdFields(Collections.singletonList("name"));
+        targetConfig.setIdFields(Collections.singletonList("tgt_name"));
 
         schemaConfig.setSourceConfig(sourceConfig);
         schemaConfig.setTargetConfig(targetConfig);
@@ -261,14 +260,9 @@ public class HugeGraphIT {
         MappingConfig mappingConfig = new MappingConfig();
         Map<String, String> map = new HashMap<>();
         map.put("duration", "duration");
-        Map<String, String> sourceMap = new HashMap<>();
-        sourceMap.put("src_name", "name");
-        Map<String, String> targetMap = new HashMap<>();
-        targetMap.put("tgt_name", "name");
+        map.put("src_name", "name");
+        map.put("tgt_name", "name");
         mappingConfig.setFieldMapping(map);
-        mappingConfig.setSourceIdMapping(sourceMap);
-        mappingConfig.setTargetIdMapping(targetMap);
-
         schemaConfig.setMapping(mappingConfig);
 
         try {
@@ -380,23 +374,19 @@ public class HugeGraphIT {
 
         SourceTargetConfig sourceConfig = new SourceTargetConfig();
         sourceConfig.setLabel(VERTEX_LABEL_PERSON);
-        sourceConfig.setIdFields(Collections.singletonList("name"));
+        sourceConfig.setIdFields(Collections.singletonList("src_name"));
         SourceTargetConfig targetConfig = new SourceTargetConfig();
         targetConfig.setLabel(VERTEX_LABEL_PERSON);
-        targetConfig.setIdFields(Collections.singletonList("name"));
+        targetConfig.setIdFields(Collections.singletonList("tgt_name"));
         schemaConfig.setSourceConfig(sourceConfig);
         schemaConfig.setTargetConfig(targetConfig);
 
         MappingConfig mappingConfig = new MappingConfig();
         Map<String, String> map = new HashMap<>();
         map.put("duration", "duration");
-        Map<String, String> sourceMap = new HashMap<>();
-        sourceMap.put("src_name", "name");
-        Map<String, String> targetMap = new HashMap<>();
-        targetMap.put("tgt_name", "name");
+        map.put("src_name", "name");
+        map.put("tgt_name", "name");
         mappingConfig.setFieldMapping(map);
-        mappingConfig.setSourceIdMapping(sourceMap);
-        mappingConfig.setTargetIdMapping(targetMap);
         schemaConfig.setMapping(mappingConfig);
 
         try {
@@ -457,7 +447,7 @@ public class HugeGraphIT {
                             "prop_long",
                             "prop_double",
                             "prop_boolean",
-                            "prop_date"
+                            "prop_date_1"
                         },
                         new SeaTunnelDataType<?>[] {
                             org.apache.seatunnel.api.table.type.BasicType.STRING_TYPE,
@@ -471,13 +461,9 @@ public class HugeGraphIT {
         // 2. Configure SchemaConfig for the new vertex type
         MappingConfig mappingConfig = new MappingConfig();
         Map<String, String> map = new HashMap<>();
-        map.put("id_field", "id_field");
-        map.put("prop_string", "prop_string");
-        map.put("prop_long", "prop_long");
-        map.put("prop_double", "prop_double");
-        map.put("prop_boolean", "prop_boolean");
-        map.put("prop_date", "prop_date");
+        map.put("prop_date_1", "prop_date");
         mappingConfig.setFieldMapping(map); // 'id_field' will be used as the custom ID
+        mappingConfig.setTimeZone("UTC");
 
         SchemaConfig schemaConfig = new SchemaConfig();
         schemaConfig.setType(SchemaConfig.LabelType.VERTEX);
@@ -506,7 +492,7 @@ public class HugeGraphIT {
         assertEquals(123.45, insertedVertex.property("prop_double"));
         assertEquals(true, insertedVertex.property("prop_boolean"));
         // The date is serialized as a long (timestamp)
-        Date expectedDate = Date.from(insertDate.atZone(ZoneId.systemDefault()).toInstant());
+        Date expectedDate = Date.from(insertDate.atZone(ZoneOffset.UTC).toInstant());
         LocalDateTime insertDateTime =
                 LocalDateTime.parse((String) insertedVertex.property("prop_date"), formatter);
         long insertTimeStampUtc = insertDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
@@ -530,8 +516,8 @@ public class HugeGraphIT {
         assertEquals(2000000L, ((Number) updatedVertex.property("prop_long")).longValue());
         assertEquals(543.21, updatedVertex.property("prop_double"));
         assertEquals(false, updatedVertex.property("prop_boolean"));
-        Date expectedUpdateDate = Date.from(updateDate.atZone(ZoneId.systemDefault()).toInstant());
 
+        Date expectedUpdateDate = Date.from(updateDate.atZone(ZoneOffset.UTC).toInstant());
         LocalDateTime updatedDateTime =
                 LocalDateTime.parse((String) updatedVertex.property("prop_date"), formatter);
         long updatedTimeStampMillisUtc = updatedDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
@@ -598,32 +584,20 @@ public class HugeGraphIT {
 
         SourceTargetConfig sourceConfig = new SourceTargetConfig();
         sourceConfig.setLabel("person_pk_for_edge");
-        sourceConfig.setIdFields(Collections.singletonList("name"));
+        sourceConfig.setIdFields(Collections.singletonList("src_name"));
 
         SourceTargetConfig targetConfig = new SourceTargetConfig();
         targetConfig.setLabel("software_cs_for_edge");
-        targetConfig.setIdFields(Collections.singletonList("lang"));
+        targetConfig.setIdFields(Collections.singletonList("tgt_id"));
 
         schemaConfig.setSourceConfig(sourceConfig);
         schemaConfig.setTargetConfig(targetConfig);
 
         MappingConfig mappingConfig = new MappingConfig();
         Map<String, String> map = new HashMap<>();
-        map.put("prop_string", "prop_string");
-        map.put("prop_long", "prop_long");
-        map.put("prop_double", "prop_double");
-        map.put("prop_boolean", "prop_boolean");
-        map.put("prop_date", "prop_date");
-
-        Map<String, String> sourceMap = new HashMap<>();
-        sourceMap.put("src_name", "name");
-        Map<String, String> targetMap = new HashMap<>();
-        targetMap.put("tgt_id", "lang");
-
+        map.put("src_name", "name");
+        map.put("tgt_id", "lang");
         mappingConfig.setFieldMapping(map);
-        mappingConfig.setSourceIdMapping(sourceMap);
-        mappingConfig.setTargetIdMapping(targetMap);
-
         schemaConfig.setMapping(mappingConfig);
 
         // 4. INSERT operation

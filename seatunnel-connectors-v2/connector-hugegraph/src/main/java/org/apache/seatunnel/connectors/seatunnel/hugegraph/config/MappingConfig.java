@@ -27,13 +27,11 @@ import java.util.Map;
 public class MappingConfig implements Serializable {
     private Map<String, String> fieldMapping;
     private Map<Object, Object> valueMapping;
+    private List<String> nullableKeys;
     private List<String> nullValues;
+    private List<String> sortKeys;
 
     // Time config
     private String dateFormat;
     private String timeZone;
-
-    // Edge vertex mapping
-    private Map<String, String> SourceIdMapping;
-    private Map<String, String> TargetIdMapping;
 }

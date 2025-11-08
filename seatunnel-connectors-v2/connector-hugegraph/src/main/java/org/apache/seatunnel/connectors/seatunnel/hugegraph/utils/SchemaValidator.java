@@ -27,6 +27,7 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.LabelType;
 
 import org.apache.hugegraph.driver.SchemaManager;
+import org.apache.hugegraph.structure.constant.Cardinality;
 import org.apache.hugegraph.structure.constant.DataType;
 import org.apache.hugegraph.structure.schema.EdgeLabel;
 import org.apache.hugegraph.structure.schema.PropertyKey;
@@ -125,40 +126,36 @@ public final class SchemaValidator {
                         : mappingConfig.getFieldMapping();
 
         for (int i = 0; i < rowType.getTotalFields(); i++) {
-            String sourceFieldName = rowType.getFieldName(i);
+            String fieldName = rowType.getFieldName(i);
             SeaTunnelDataType<?> seaTunnelType = rowType.getFieldType(i);
-
-            // Skip fields that are not in the mapping
-            if (!fieldMapping.containsKey(sourceFieldName)) {
-                continue;
-            }
-
-            String targetPropertyName = fieldMapping.get(sourceFieldName);
+            String propertyName = fieldMapping.getOrDefault(fieldName, fieldName);
 
             // 1. Check if the property exists in HugeGraph
-            if (!hugegraphProperties.contains(targetPropertyName)) {
+            if (!hugegraphProperties.contains(propertyName)) {
                 throw new IllegalArgumentException(
                         String.format(
                                 "Property '%s' for label '%s' is defined in the connector config, but does not exist in the HugeGraph schema.",
-                                targetPropertyName, label));
+                                propertyName, label));
             }
 
             // 2. Check for data type compatibility
-            PropertyKey propertyKey = schema.getPropertyKey(targetPropertyName);
+            PropertyKey propertyKey = schema.getPropertyKey(propertyName);
             DataType hugeGraphType = propertyKey.dataType();
+            Cardinality cardinality = propertyKey.cardinality();
 
-            if (!isCompatible(seaTunnelType, hugeGraphType)) {
+            if (!isCompatible(seaTunnelType, hugeGraphType, cardinality)) {
                 throw new IllegalArgumentException(
                         String.format(
                                 "Data type mismatch for property '%s' on label '%s'. "
                                         + "SeaTunnel type '%s' is not compatible with HugeGraph type '%s'.",
-                                targetPropertyName, label, seaTunnelType, hugeGraphType));
+                                propertyName, label, seaTunnelType, hugeGraphType));
             }
         }
     }
 
     /** Checks if a SeaTunnelDataType is compatible with a HugeGraph DataType. */
-    private boolean isCompatible(SeaTunnelDataType<?> seaTunnelType, DataType hugeGraphType) {
+    private boolean isCompatible(
+            SeaTunnelDataType<?> seaTunnelType, DataType hugeGraphType, Cardinality cardinality) {
         switch (seaTunnelType.getSqlType()) {
             case BYTES:
                 return hugeGraphType == DataType.BLOB;
@@ -178,11 +175,13 @@ public final class SchemaValidator {
             case TIMESTAMP:
                 return hugeGraphType == DataType.DATE;
             case ARRAY:
-                // For arrays, HugeGraph property definitions are for single elements.
-                // We check the compatibility of the array's element type.
                 SeaTunnelDataType<?> elementType =
                         ((ArrayType<?, ?>) seaTunnelType).getElementType();
-                return isCompatible(elementType, hugeGraphType);
+                if (cardinality != Cardinality.SINGLE) {
+                    return isCompatible(elementType, hugeGraphType, Cardinality.LIST);
+                } else {
+                    return false;
+                }
             case MAP:
             case DECIMAL: // Decimal is mapped to TEXT to preserve precision
             case ROW:

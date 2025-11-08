@@ -18,7 +18,6 @@
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper;
 
 import org.apache.seatunnel.api.table.type.SeaTunnelRow;
-import org.apache.seatunnel.api.table.type.SeaTunnelRowType;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
@@ -31,11 +30,11 @@ import org.apache.hugegraph.structure.schema.PropertyKey;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class VertexMapper implements GraphDataMapper {
 
@@ -44,17 +43,16 @@ public class VertexMapper implements GraphDataMapper {
     private final Map<String, Integer> fieldsIndex;
     private final String labelId;
     private final HugeGraphClient client;
+    private final Map<String, PropertyKey> propertyKeyCache;
 
     public VertexMapper(
-            SchemaConfig schemaConfig, SeaTunnelRowType rowType, HugeGraphClient client) {
+            SchemaConfig schemaConfig, Map<String, Integer> fieldsIndex, HugeGraphClient client) {
         this.schemaConfig = schemaConfig;
         this.mappingConfig = getMappingConfig();
         this.client = client;
         this.labelId = client.getVertexLabel(schemaConfig.getLabel());
-        this.fieldsIndex =
-                IntStream.range(0, rowType.getTotalFields())
-                        .boxed()
-                        .collect(Collectors.toMap(rowType::getFieldName, i -> i));
+        this.fieldsIndex = fieldsIndex;
+        this.propertyKeyCache = getPropertyKeyCache();
     }
 
     private MappingConfig getMappingConfig() {
@@ -68,6 +66,16 @@ public class VertexMapper implements GraphDataMapper {
         }
         schemaConfig.setMapping(mapping);
         return mapping;
+    }
+
+    private HashMap<String, PropertyKey> getPropertyKeyCache() {
+        HashMap<String, PropertyKey> cache = new HashMap<>();
+        Map<String, String> fieldMapping = mappingConfig.getFieldMapping();
+        for (String fieldName : fieldsIndex.keySet()) {
+            String propertyName = fieldMapping.getOrDefault(fieldName, fieldName);
+            cache.put(propertyName, client.getPropertyKey(propertyName));
+        }
+        return cache;
     }
 
     @Override
@@ -92,20 +100,22 @@ public class VertexMapper implements GraphDataMapper {
         for (Map.Entry<String, Integer> fieldEntry : fieldsIndex.entrySet()) {
 
             String fieldName = fieldEntry.getKey();
-            String PropertyName = fieldMapping.getOrDefault(fieldName, fieldName);
-            PropertyKey propertykey = client.getPropertyKey(PropertyName);
+            String propertyName = fieldMapping.getOrDefault(fieldName, fieldName);
+            Object rawValue = row.getField(fieldEntry.getValue());
+            PropertyKey propertyKey = propertyKeyCache.get(propertyName);
+
+            if (isConsideredNull(rawValue)) {
+                continue;
+            }
 
             Object fieldValue =
                     DataTypeUtil.convert(
-                            row.getField(fieldEntry.getValue()),
-                            propertykey,
+                            rawValue,
+                            propertyKey,
                             mappingConfig.getDateFormat(),
                             mappingConfig.getTimeZone());
 
-            if (isConsideredNull(fieldValue)) {
-                continue;
-            }
-            vertex.property(PropertyName, getMappedValue(fieldValue));
+            vertex.property(propertyName, getMappedValue(fieldValue));
         }
         return vertex;
     }
@@ -165,23 +175,30 @@ public class VertexMapper implements GraphDataMapper {
 
     private List<Object> getFieldValues(SeaTunnelRow row, List<String> fields) {
         List<Object> values = new ArrayList<>(fields.size());
+        Map<String, String> fieldMapping = mappingConfig.getFieldMapping();
+        for (String fieldName : fields) {
 
-        for (Map.Entry<String, Integer> fieldEntry : fieldsIndex.entrySet()) {
-            String FieldName = fieldEntry.getKey();
-            String PropertyName =
-                    mappingConfig.getFieldMapping().getOrDefault(FieldName, FieldName);
-
-            if (!fields.contains(PropertyName)) {
+            Integer index = fieldsIndex.get(fieldName);
+            if (index == null) {
+                // TODO: throw exception
                 continue;
             }
 
-            PropertyKey propertykey = client.getPropertyKey(PropertyName);
+            Object rawValue = row.getField(index);
+            if (isConsideredNull(rawValue)) {
+                continue;
+            }
+
+            String propertyName = fieldMapping.getOrDefault(fieldName, fieldName);
+            PropertyKey propertyKey = propertyKeyCache.get(propertyName);
+
             Object fieldValue =
                     DataTypeUtil.convert(
-                            row.getField(fieldEntry.getValue()),
-                            propertykey,
+                            rawValue,
+                            propertyKey,
                             mappingConfig.getDateFormat(),
                             mappingConfig.getTimeZone());
+
             values.add(getMappedValue(fieldValue));
         }
         return values;
@@ -209,7 +226,6 @@ public class VertexMapper implements GraphDataMapper {
     private String spliceVertexId(List<Object> primaryValues) {
         String joinedValues =
                 primaryValues.stream().map(Object::toString).collect(Collectors.joining("!"));
-
         return String.format("%s:%s", labelId, joinedValues);
     }
 }

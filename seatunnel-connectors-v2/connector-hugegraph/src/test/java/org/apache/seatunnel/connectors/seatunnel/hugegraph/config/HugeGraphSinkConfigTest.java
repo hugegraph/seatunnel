@@ -176,8 +176,6 @@ class HugeGraphSinkConfigTest {
         assertEquals("name", sinkConfig.getSelectedFields().get(0));
         assertEquals(1, sinkConfig.getIgnoredFields().size());
         assertEquals("id", sinkConfig.getIgnoredFields().get(0));
-        assertEquals(1, sinkConfig.getPropertyMapping().size());
-        assertEquals("vertex_name", sinkConfig.getPropertyMapping().get("name"));
 
         // Assert nested schema object
         assertNotNull(sinkConfig.getSchemaConfig());

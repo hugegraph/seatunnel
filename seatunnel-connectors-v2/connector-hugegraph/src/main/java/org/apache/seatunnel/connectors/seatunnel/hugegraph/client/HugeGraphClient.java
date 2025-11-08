@@ -249,7 +249,7 @@ public final class HugeGraphClient {
 
     public void close() {
         if (this.client != null) {
-            LOG.info("Closing HugeClient singleton instance.");
+            LOG.info("Closing HugeClient instance.");
             this.client.close();
         }
     }

@@ -52,7 +52,6 @@ public class HugeGraphSinkFactory implements TableSinkFactory {
                         HugeGraphOptions.USERNAME,
                         HugeGraphOptions.PASSWORD)
                 // mapping config
-                .required(HugeGraphSinkOptions.PROPERTY_MAPPING)
                 .exclusive(
                         HugeGraphSinkOptions.SELECTED_FIELDS, HugeGraphSinkOptions.IGNORED_FIELDS)
                 .required(HugeGraphSinkOptions.SCHEMA_CONFIG)

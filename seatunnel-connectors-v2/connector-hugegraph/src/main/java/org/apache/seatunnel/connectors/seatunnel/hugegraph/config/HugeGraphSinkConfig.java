@@ -23,7 +23,6 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 
 @Data
 public class HugeGraphSinkConfig implements Serializable {
@@ -41,7 +40,6 @@ public class HugeGraphSinkConfig implements Serializable {
     private int retryBackoffMs;
 
     // mapping config
-    private Map<String, String> propertyMapping;
     private List<String> selectedFields;
     private List<String> ignoredFields;
 
@@ -63,7 +61,6 @@ public class HugeGraphSinkConfig implements Serializable {
         sinkConfig.setRetryBackoffMs(
                 config.getOptional(HugeGraphOptions.RETRY_BACKOFF_MS)
                         .orElse(HugeGraphOptions.RETRY_BACKOFF_MS.defaultValue()));
-        sinkConfig.setPropertyMapping(config.get(HugeGraphSinkOptions.PROPERTY_MAPPING));
         sinkConfig.setSchemaConfig(config.get(HugeGraphSinkOptions.SCHEMA_CONFIG));
 
         config.getOptional(HugeGraphSinkOptions.SELECTED_FIELDS)

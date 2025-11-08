@@ -34,25 +34,23 @@ public class SchemaConfig implements Serializable {
     private String label;
     private String tablePath;
 
-    // PropertyKey Config
+    // Property Config
     private List<String> properties;
 
     // General Label Config
-    private List<String> nullableKeys;
     private Long ttl;
     private String ttlStartTime;
     private String enableLabelIndex;
     private Map<String, Object> userdata;
 
     // VertexLabel config
-    private IdStrategy idStrategy; // CUSTOMIZE_UUID or PRIMARY_KEY
+    private IdStrategy idStrategy;
     private List<String> idFields;
 
     // EdgeLabel Config
     private SourceTargetConfig sourceConfig;
     private SourceTargetConfig targetConfig;
     private Frequency frequency;
-    private List<String> sortKeys;
 
     // Mapping Config
     private MappingConfig mapping;
