@@ -41,8 +41,7 @@ public final class SchemaValidator {
 
     private final HugeGraphSinkConfig sinkConfig;
     private final SeaTunnelRowType rowType;
-
-    private HugeGraphClient client;
+    private final HugeGraphClient client;
 
     public SchemaValidator(HugeGraphSinkConfig config, SeaTunnelRowType rowType) {
         this.sinkConfig = config;
