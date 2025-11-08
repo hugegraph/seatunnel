@@ -21,7 +21,6 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkC
 
 import org.apache.hugegraph.driver.HugeClient;
 import org.apache.hugegraph.driver.SchemaManager;
-import org.apache.hugegraph.driver.TraverserManager;
 import org.apache.hugegraph.exception.ServerException;
 import org.apache.hugegraph.rest.ClientException;
 import org.apache.hugegraph.structure.constant.IdStrategy;
@@ -46,12 +45,10 @@ public final class HugeGraphClient {
 
     private final HugeClient client;
     @Getter private final SchemaManager schema;
-    private final TraverserManager traverser;
 
     public HugeGraphClient(HugeGraphSinkConfig config) {
         this.client = createClient(config);
         this.schema = client.schema();
-        this.traverser = client.traverser();
     }
 
     private static HugeClient createClient(HugeGraphSinkConfig config) {

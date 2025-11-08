@@ -37,26 +37,25 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.when;
 
 class HugeGraphSinkConfigTest {
-    // 使用 @Mock 注解自动创建 mock 对象
+    // Use @mock
     @Mock private ReadonlyConfig mockConfig;
 
     @BeforeEach
     void setUp() {
-        // 在每个测试方法运行前，初始化 mock 对象
         MockitoAnnotations.openMocks(this);
     }
 
     @Test
     void testOf_shouldCreateConfigFromReadonlyConfig() {
-        // --- 1. Arrange (准备阶段) ---
-        // 定义我们期望从 mockConfig 中获取到的值，并“打桩”
+        // --- 1. Arrange ---
+        // Define and stub the expected values from mockConfig.
         String expectedHost = "127.0.0.1";
         int expectedPort = 8080;
         String expectedGraph = "my_graph";
         String expectedUsername = "test_user";
         String expectedProperty = "{test_password}";
 
-        // 为必填项打桩
+        // Required fields stubbing
         when(mockConfig.get(HugeGraphOptions.HOST)).thenReturn(expectedHost);
         when(mockConfig.get(HugeGraphOptions.PORT)).thenReturn(expectedPort);
         when(mockConfig.get(HugeGraphOptions.GRAPH_NAME)).thenReturn(expectedGraph);
@@ -67,32 +66,30 @@ class HugeGraphSinkConfigTest {
         when(mockConfig.getOptional(HugeGraphOptions.RETRY_BACKOFF_MS))
                 .thenReturn(Optional.of(200));
 
-        // 为可选项打桩 (模拟一个存在，一个不存在)
+        // Optional fields stubbing
         when(mockConfig.getOptional(HugeGraphOptions.USERNAME))
                 .thenReturn(Optional.of(expectedUsername));
-        when(mockConfig.getOptional(HugeGraphOptions.PASSWORD))
-                .thenReturn(Optional.empty()); // 模拟密码不存在
+        when(mockConfig.getOptional(HugeGraphOptions.PASSWORD)).thenReturn(Optional.empty());
         when(mockConfig.getOptional(HugeGraphOptions.GRAPH_SPACE)).thenReturn(Optional.empty());
         when(mockConfig.getOptional(HugeGraphSinkOptions.SELECTED_FIELDS))
                 .thenReturn(Optional.empty());
         when(mockConfig.getOptional(HugeGraphSinkOptions.IGNORED_FIELDS))
                 .thenReturn(Optional.empty());
 
-        // --- 2. Act (执行阶段) ---
-        // 调用我们要测试的静态方法
+        // --- 2. Act ---
+        // Call the static method under test.
         HugeGraphSinkConfig actualSinkConfig = HugeGraphSinkConfig.of(mockConfig);
 
-        // --- 3. Assert (断言阶段) ---
-        // 验证返回的 sinkConfig 对象中的值是否符合我们的预期
-        assertNotNull(actualSinkConfig); // 首先确保返回的对象不是 null
+        // --- 3. Assert ---
+        // Verify that the values in the returned sinkConfig object are as expected.
+        assertNotNull(actualSinkConfig);
         assertEquals(expectedHost, actualSinkConfig.getHost());
         assertEquals(expectedPort, actualSinkConfig.getPort());
         assertEquals(expectedGraph, actualSinkConfig.getGraphName());
         assertEquals(1024, actualSinkConfig.getBatchSize());
 
-        // 验证可选项
         assertEquals(expectedUsername, actualSinkConfig.getUsername());
-        assertNull(actualSinkConfig.getPassword()); // 因为我们模拟它不存在，所以它应该是 null
+        assertNull(actualSinkConfig.getPassword());
     }
 
     @Test

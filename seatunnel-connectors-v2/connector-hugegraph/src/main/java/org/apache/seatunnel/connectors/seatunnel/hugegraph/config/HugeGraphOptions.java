@@ -24,7 +24,6 @@ public class HugeGraphOptions {
 
     public static final String PLUGIN_NAME = "HugeGraph";
 
-    // TODO: spilt the general config and sink config
     public static final Option<String> HOST =
             Options.key("host")
                     .stringType()

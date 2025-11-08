@@ -308,23 +308,17 @@ public final class DataTypeUtil {
             if (timeZone != null && !timeZone.isEmpty()) {
                 zoneId = ZoneId.of(timeZone);
             } else {
-                // 如果没有提供 timeZone，则使用系统默认值
                 zoneId = ZoneId.systemDefault();
             }
         } catch (Exception e) {
-            // 处理无效的 timeZone 字符串 (例如 "CST")
             throw new IllegalArgumentException(
                     String.format("Invalid timeZone string provided: '%s'", timeZone), e);
         }
 
-        // 3. 处理 LocalDateTime
-        // 假设这个本地时间是属于 "zoneId" 所代表的时区的
         if (value instanceof LocalDateTime) {
             return Date.from(((LocalDateTime) value).atZone(zoneId).toInstant());
         }
 
-        // 4. 处理 LocalDate
-        // 假设这个本地日期是从 "zoneId" 时区的午夜开始的
         if (value instanceof java.time.LocalDate) {
             return Date.from(((java.time.LocalDate) value).atStartOfDay(zoneId).toInstant());
         }
