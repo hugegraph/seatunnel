@@ -293,6 +293,21 @@ public class HugeGraphIT {
         Vertex targetVertex = hugeClient.graph().getVertex(createdEdge.targetId());
         assertEquals("marko", sourceVertex.property("name"));
         assertEquals("david", targetVertex.property("name"));
+
+        // 7. Verify the frequency setting
+        try {
+            HugeGraphSinkWriter writer = createSinkWriter(schemaConfig, edgeRowType);
+            SeaTunnelRow row = new SeaTunnelRow(new Object[] {"marko", "david", 11.0});
+            row.setRowKind(RowKind.INSERT);
+            writer.write(row);
+            writer.close();
+        } finally {
+        }
+
+        List<Edge> edges_overwrite = hugeClient.graph().listEdges("knows");
+        assertEquals(1, edges_overwrite.size());
+        Edge createdEdge_overwrite = edges_overwrite.get(0);
+        assertEquals(11.0, createdEdge_overwrite.property("duration"));
     }
 
     @Test
@@ -345,10 +360,8 @@ public class HugeGraphIT {
 
         Edge edge = new Edge("knows").source(marko).target(david).property("duration", 12.3);
         hugeClient.graph().addEdge(edge);
-        Edge edge_1 = new Edge("knows").source(marko).target(david).property("duration", 22.0);
-        hugeClient.graph().addEdge(edge_1);
 
-        // Verify it exists first
+        // Verify it exists first and there
         assertEquals(1, hugeClient.graph().listEdges("knows").size());
 
         // 2. Define edge row type (only source/target fields needed for identification)
@@ -385,8 +398,6 @@ public class HugeGraphIT {
         mappingConfig.setSourceIdMapping(sourceMap);
         mappingConfig.setTargetIdMapping(targetMap);
         schemaConfig.setMapping(mappingConfig);
-
-        System.out.println(hugeClient.graph().listEdges("knows"));
 
         try {
             // 4. Create writer
