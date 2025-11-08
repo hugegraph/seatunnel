@@ -123,6 +123,10 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
     private void handleUpsert(SeaTunnelRow row) throws IOException {
         try {
             GraphElement element = mapper.map(row);
+            if (element == null) {
+                LOG.warn("Cannot create graph element: required ID fields missing for row {}", row);
+                return;
+            }
             buffer.add(element);
         } catch (Exception e) {
             if (e instanceof IOException) {

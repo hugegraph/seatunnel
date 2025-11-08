@@ -17,6 +17,7 @@
 
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.client;
 
+import org.apache.hugegraph.structure.constant.Direction;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkConfig;
 
 import org.apache.hugegraph.driver.HugeClient;

@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.when;
 
 class HugeGraphSinkConfigTest {
-    // Use @mock
+    // Automatically create mock objects using @Mock annotation
     @Mock private ReadonlyConfig mockConfig;
 
     @BeforeEach

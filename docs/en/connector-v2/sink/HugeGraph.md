@@ -1,3 +1,5 @@
+import ChangeLog from '../changelog/connector-hugegraph.md';
+
 # HugeGraph Sink Connector
 
 `Sink: HugeGraph`
@@ -40,23 +42,23 @@ This connector supports writing data as vertices or edges, providing flexible ma
 
 ### Schema Configuration (`schema_config`)
 
-Each object in the `schema` list defines a mapping from the source data to a specific vertex or edge label in HugeGraph.
+Each object in the `schema_config` list defines a mapping from the source data to a specific vertex or edge label in HugeGraph.
 
-| Name               | Type                | Required   | Default Value | Description                                                                                                                            |
-| ------------------ | ------------------- | ---------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`             | String              | Yes        | -             | The type of graph element to map to. Can be `VERTEX` or `EDGE`.                                                                        |
-| `label`            | String              | Yes        | -             | The label of the vertex or edge in HugeGraph.                                                                                          |
-| `properties`       | List<String>        | No         | -             | A list of source field names for the vertex or edge.                                                                                        |
-| `ttl`              | Long                | No         | -             | The time-to-live for the vertex or edge in seconds.                                                                                    |
-| `ttlStartTime`     | String              | No         | -             | The start time for the TTL.                                                                                                            |
-| `enableLabelIndex` | Boolean             | No         | `false`       | Whether to enable label index for this label.                                                                                          |
-| `userdata`         | Map<String, Object> | No         | -             | User-defined data associated with the label.                                                                                           |
-| `idStrategy`       | String              | For Vertex | -             | The ID generation strategy for vertices. Supported values: `PRIMARY_KEY`, `CUSTOMIZE_UUID`, `AUTOMATIC`.                                 |
-| `idFields`         | List<String>        | For Vertex | -             | A list of source field names used to generate the vertex ID.                                                                           |
-| `sourceConfig`     | Object              | For Edge   | -             | An object defining the mapping for the edge's source vertex. See `Source/Target Config` below.                                         |
-| `targetConfig`     | Object              | For Edge   | -             | An object defining the mapping for the edge's target vertex. See `Source/Target Config` below.                                         |
-| `frequency`        | String              | For Edge   | -             | The frequency of the edge, e.g., `SINGLE`, `MULTIPLE`.                                                                                 |
-| `mapping`          | Object              | No         | -             | An object defining advanced field and value mappings. See `Mapping Config` below.                                                      |
+| Name               | Type                | Required   | Default Value | Description                                                                                              |
+| ------------------ | ------------------- | ---------- | ------------- |----------------------------------------------------------------------------------------------------------|
+| `type`             | String              | Yes        | -             | The type of graph element to map to. Must be `VERTEX` or `EDGE`.                                         |
+| `label`            | String              | Yes        | -             | The label of the vertex or edge in HugeGraph.                                                            |
+| `properties`       | List<String>        | No         | -             | A list of source field names for the vertex or edge.                                                     |
+| `ttl`              | Long                | No         | -             | The time-to-live for the vertex or edge in seconds.                                                      |
+| `ttlStartTime`     | String              | No         | -             | The start time for the TTL.                                                                              |
+| `enableLabelIndex` | Boolean             | No         | `false`       | Whether to enable label index for this label.                                                            |
+| `userdata`         | Map<String, Object> | No         | -             | User-defined data associated with the label.                                                             |
+| `idStrategy`       | String              | For Vertex | -             | The ID generation strategy for vertices. Supported values: `PRIMARY_KEY`, `CUSTOMIZE_UUID`, `AUTOMATIC`. |
+| `idFields`         | List<String>        | For Vertex | -             | A list of source field names used to generate the vertex ID.                                             |
+| `sourceConfig`     | Object              | For Edge   | -             | An object defining the mapping for the edge's source vertex. See `Source/Target Config` below.           |
+| `targetConfig`     | Object              | For Edge   | -             | An object defining the mapping for the edge's target vertex. See `Source/Target Config` below.           |
+| `frequency`        | String              | For Edge   | -             | The frequency of the edge, e.g., `SINGLE`, `MULTIPLE`.                                                   |
+| `mapping`          | Object              | No         | -             | An object defining advanced field and value mappings. See `Mapping Config` below.                        |
 
 ### Source/Target Config (`sourceConfig` and `targetConfig`)
 
@@ -80,6 +82,7 @@ This object provides advanced control over how fields and values are mapped to p
 | `dateFormat`      | String              | No       | `yyyy-MM-dd`  | The date format for parsing date strings.                                                                                                                                         |
 | `timeZone`        | String              | No       | `GMT+8`       | The time zone for date parsing.                                                                                                                                                   |
 | `sortKeys`         | List<String>        | For Edge   | -             | A list of property keys  to sort edges with the same source and target vertices.                                                                                                  |
+
 ## Usage Examples
 
 ### 1. Writing Vertices
@@ -93,7 +96,7 @@ env {
 
 source {
   FakeSource {
-    result_table_name = "fake_source"
+    plugin_input = "fake_source"
     schema = {
       fields = {
         name = "string"
@@ -132,7 +135,7 @@ env {
 
 source {
   FakeSource {
-    result_table_name = "fake_source"
+    plugin_input = "fake_source"
     schema = {
       fields = {
         person1_name = "string"
@@ -153,18 +156,18 @@ sink {
       type = "EDGE"
       label = "knows"
       sourceConfig = {
-        label: "person"
-        idFields: ["person1_name"]
+        label = "person"
+        idFields = ["person1_name"]
       }
       targetConfig = {
-        label: "person"
-        idFields: ["person2_name"]
+        label = "person"
+        idFields = ["person2_name"]
       }
       properties = ["since"]
       mapping = {
         fieldMapping = {
-          src_name:"name"
-          tgt_name:"name"
+          src_name = "name"
+          tgt_name = "name"
         }
       }
     }
