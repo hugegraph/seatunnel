@@ -166,8 +166,8 @@ sink {
       properties = ["since"]
       mapping = {
         fieldMapping = {
-          src_name = "name"
-          tgt_name = "name"
+          person1_name = "name"
+          person2_name = "name"
         }
       }
     }

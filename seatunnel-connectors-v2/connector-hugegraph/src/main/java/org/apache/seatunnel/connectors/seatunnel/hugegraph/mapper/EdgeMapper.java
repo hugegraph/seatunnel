@@ -23,7 +23,6 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.SourceTargetConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.DataTypeUtil;
-import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.E;
 
 import org.apache.hugegraph.structure.constant.IdStrategy;
 import org.apache.hugegraph.structure.graph.Edge;
