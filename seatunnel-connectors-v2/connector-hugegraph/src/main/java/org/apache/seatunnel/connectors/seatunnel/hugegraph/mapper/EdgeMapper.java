@@ -188,8 +188,7 @@ public class EdgeMapper implements GraphDataMapper {
                 throw new IllegalArgumentException(
                         String.format(
                                 "Field '%s' specified in id_fields not found in row schema. Available fields: %s",
-                                fieldName,
-                                fieldsIndex.keySet()));
+                                fieldName, fieldsIndex.keySet()));
             }
 
             Object rawValue = row.getField(index);
