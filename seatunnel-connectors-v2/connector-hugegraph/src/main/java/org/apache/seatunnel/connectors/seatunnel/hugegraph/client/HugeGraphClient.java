@@ -40,7 +40,7 @@ import java.util.List;
 
 public final class HugeGraphClient {
 
-    // TODO: 目前先进行简单逻辑实现，后续可补充 schema 获取失败的相关逻辑
+    // TODO: Add handling for schema fetch failures.
     private static final Logger LOG = LoggerFactory.getLogger(HugeGraphClient.class);
 
     private final HugeClient client;

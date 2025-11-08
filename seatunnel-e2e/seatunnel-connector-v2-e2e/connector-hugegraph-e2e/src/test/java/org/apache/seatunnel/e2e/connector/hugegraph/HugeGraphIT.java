@@ -551,7 +551,6 @@ public class HugeGraphIT {
                 assertThrows(
                         ServerException.class,
                         () -> {
-                            // (Act) 执行被测试的代码
                             hugeClient.graph().getVertex("custom_id_1");
                         });
 

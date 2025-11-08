@@ -55,7 +55,6 @@ public class HugeGraphSink extends AbstractSimpleSink<SeaTunnelRow, Void> {
         return new HugeGraphSinkWriter(config, rowType);
     }
 
-    // commiter与restore都为可选项
     @Override
     public Optional<CatalogTable> getWriteCatalogTable() {
         return Optional.ofNullable(catalogTable);
