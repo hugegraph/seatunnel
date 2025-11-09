@@ -534,29 +534,6 @@
                 <version>${hugegraph.client.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>org.apache.hugegraph</groupId>
-                <artifactId>hugegraph-common</artifactId>
-                <version>${hugegraph.client.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.hugegraph</groupId>
-                <artifactId>hugegraph-commons</artifactId>
-                <version>${hugegraph.client.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.squareup.okio</groupId>
-                <artifactId>okio-jvm</artifactId>
-                <version>${okio.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.squareup.okio</groupId>
-                <artifactId>okio</artifactId>
-                <version>${okio.version}</version>
-            </dependency>
-
         </dependencies>
     </dependencyManagement>
 
