@@ -44,21 +44,21 @@ This connector supports writing data as vertices or edges, providing flexible ma
 
 Each object in the `schema_config` list defines a mapping from the source data to a specific vertex or edge label in HugeGraph.
 
-| Name               | Type                | Required   | Default Value | Description                                                                                              |
-| ------------------ | ------------------- | ---------- | ------------- |----------------------------------------------------------------------------------------------------------|
-| `type`             | String              | Yes        | -             | The type of graph element to map to. Must be `VERTEX` or `EDGE`.                                         |
-| `label`            | String              | Yes        | -             | The label of the vertex or edge in HugeGraph.                                                            |
-| `properties`       | List<String>        | No         | -             | A list of source field names for the vertex or edge.                                                     |
-| `ttl`              | Long                | No         | -             | The time-to-live for the vertex or edge in seconds.                                                      |
-| `ttlStartTime`     | String              | No         | -             | The start time for the TTL.                                                                              |
-| `enableLabelIndex` | Boolean             | No         | `false`       | Whether to enable label index for this label.                                                            |
-| `userdata`         | Map<String, Object> | No         | -             | User-defined data associated with the label.                                                             |
-| `idStrategy`       | String              | For Vertex | -             | The ID generation strategy for vertices. Supported values: `PRIMARY_KEY`, `CUSTOMIZE_UUID`, `AUTOMATIC`. |
-| `idFields`         | List<String>        | For Vertex | -             | A list of source field names used to generate the vertex ID.                                             |
-| `sourceConfig`     | Object              | For Edge   | -             | An object defining the mapping for the edge's source vertex. See `Source/Target Config` below.           |
-| `targetConfig`     | Object              | For Edge   | -             | An object defining the mapping for the edge's target vertex. See `Source/Target Config` below.           |
-| `frequency`        | String              | For Edge   | -             | The frequency of the edge, e.g., `SINGLE`, `MULTIPLE`.                                                   |
-| `mapping`          | Object              | No         | -             | An object defining advanced field and value mappings. See `Mapping Config` below.                        |
+| Name               | Type               | Required   | Default Value | Description                                                                                              |
+| ------------------ |--------------------| ---------- | ------------- |----------------------------------------------------------------------------------------------------------|
+| `type`             | String             | Yes        | -             | The type of graph element to map to. Must be `VERTEX` or `EDGE`.                                         |
+| `label`            | String             | Yes        | -             | The label of the vertex or edge in HugeGraph.                                                            |
+| `properties`       | `List<String>`       | No         | -             | A list of source field names for the vertex or edge.                                                     |
+| `ttl`              | Long               | No         | -             | The time-to-live for the vertex or edge in seconds.                                                      |
+| `ttlStartTime`     | String             | No         | -             | The start time for the TTL.                                                                              |
+| `enableLabelIndex` | Boolean            | No         | `false`       | Whether to enable label index for this label.                                                            |
+| `userdata`         | `Map<String, Object>` | No         | -             | User-defined data associated with the label.                                                             |
+| `idStrategy`       | String             | For Vertex | -             | The ID generation strategy for vertices. Supported values: `PRIMARY_KEY`, `CUSTOMIZE_UUID`, `AUTOMATIC`. |
+| `idFields`         | `List<string>`       | For Vertex | -             | A list of source field names used to generate the vertex ID.                                             |
+| `sourceConfig`     | Object             | For Edge   | -             | An object defining the mapping for the edge's source vertex. See `Source/Target Config` below.           |
+| `targetConfig`     | Object             | For Edge   | -             | An object defining the mapping for the edge's target vertex. See `Source/Target Config` below.           |
+| `frequency`        | String             | For Edge   | -             | The frequency of the edge, e.g., `SINGLE`, `MULTIPLE`.                                                   |
+| `mapping`          | Object             | No         | -             | An object defining advanced field and value mappings. See `Mapping Config` below.                        |
 
 ### Source/Target Config (`sourceConfig` and `targetConfig`)
 
@@ -67,7 +67,7 @@ This object is used within an `EDGE` schema to define how to identify the source
 | Name       | Type         | Required | Default Value | Description                                                                                                                                                  |
 | ---------- | ------------ | -------- | ------------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `label`    | String       | Yes      | -             | The label of the source or target vertex.                                                                                                                    |
-| `idFields` | List<String> | Yes      | -             | A list of source field names from the input row used to construct the ID of the source/target vertex. The values will be concatenated to form the vertex ID. |
+| `idFields` | `List<String>` | Yes      | -             | A list of source field names from the input row used to construct the ID of the source/target vertex. The values will be concatenated to form the vertex ID. |
 
 ### Mapping Config (`mapping`)
 
@@ -75,13 +75,13 @@ This object provides advanced control over how fields and values are mapped to p
 
 | Name              | Type                | Required | Default Value | Description                                                                                                                                                                       |
 | ----------------- |---------------------|----------| ------------- |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `fieldMapping`    | Map<String, String> | No       | -             | A map where the key is the source field name and the value is the target property name in HugeGraph. If not specified, the source field name is used as the target property name. |
-| `valueMapping`    | Map<Object, Object> | No       | -             | A map to transform specific field values. The key is the original value from the source, and the value is the new value to be written.                                            |
-| `nullableKeys`    | List<String>        | No       | -             | A list of property keys that can have null values.                                                                                                                                |
-| `nullValues`      | List<String>        | No       | -             | A list of string values that should be treated as `null`. Any field containing one of these values will not be written.                                                           |
+| `fieldMapping`    | `Map<String, String>` | No       | -             | A map where the key is the source field name and the value is the target property name in HugeGraph. If not specified, the source field name is used as the target property name. |
+| `valueMapping`    | `Map<Object, Object>` | No       | -             | A map to transform specific field values. The key is the original value from the source, and the value is the new value to be written.                                            |
+| `nullableKeys`    | `List<String>`        | No       | -             | A list of property keys that can have null values.                                                                                                                                |
+| `nullValues`      | `List<String>`        | No       | -             | A list of string values that should be treated as `null`. Any field containing one of these values will not be written.                                                           |
 | `dateFormat`      | String              | No       | `yyyy-MM-dd`  | The date format for parsing date strings.                                                                                                                                         |
 | `timeZone`        | String              | No       | `GMT+8`       | The time zone for date parsing.                                                                                                                                                   |
-| `sortKeys`         | List<String>        | For Edge   | -             | A list of property keys  to sort edges with the same source and target vertices.                                                                                                  |
+| `sortKeys`         | `List<String>`        | For Edge   | -             | A list of property keys  to sort edges with the same source and target vertices.                                                                                                  |
 
 ## Usage Examples
 
