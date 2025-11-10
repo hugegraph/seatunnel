@@ -99,21 +99,21 @@ public final class HugeGraphClient {
     }
 
     public PropertyKey getPropertyKey(String propertyName) {
-        return schema.getPropertyKey(propertyName);
+        return this.schema.getPropertyKey(propertyName);
     }
 
     public String getVertexLabel(String label) {
-        VertexLabel vertexLabel = this.client.schema().getVertexLabel(label);
+        VertexLabel vertexLabel = this.schema.getVertexLabel(label);
         return String.valueOf(vertexLabel.id());
     }
 
     public String getEdgeLabel(String label) {
-        EdgeLabel edgeLabel = this.client.schema().getEdgeLabel(label);
+        EdgeLabel edgeLabel = this.schema.getEdgeLabel(label);
         return String.valueOf(edgeLabel.id());
     }
 
     public IdStrategy getIdStrategy(String label) {
-        VertexLabel vertexLabel = this.client.schema().getVertexLabel(label);
+        VertexLabel vertexLabel = this.schema.getVertexLabel(label);
         return vertexLabel.idStrategy();
     }
 
