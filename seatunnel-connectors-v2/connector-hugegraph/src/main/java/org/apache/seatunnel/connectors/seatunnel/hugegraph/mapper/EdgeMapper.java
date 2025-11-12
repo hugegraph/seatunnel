@@ -22,6 +22,8 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClien
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.SourceTargetConfig;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.DataTypeUtil;
 
 import org.apache.hugegraph.structure.constant.IdStrategy;
@@ -44,7 +46,7 @@ public class EdgeMapper implements GraphDataMapper {
     private final MappingConfig mappingConfig;
     private final Map<String, Integer> fieldsIndex;
     private final HugeGraphClient client;
-    private final Object labelId;
+    private final String labelId;
     private final Map<String, PropertyKey> propertyKeyCache;
 
     public EdgeMapper(
@@ -52,7 +54,7 @@ public class EdgeMapper implements GraphDataMapper {
         this.schemaConfig = schemaConfig;
         this.mappingConfig = getMappingConfig();
         this.client = client;
-        this.labelId = client.getEdgeLabel(schemaConfig.getLabel());
+        this.labelId = client.getEdgeLabelId(schemaConfig.getLabel());
         this.fieldsIndex = fieldsIndex;
         this.propertyKeyCache = getPropertyKeyCache();
     }
@@ -130,7 +132,7 @@ public class EdgeMapper implements GraphDataMapper {
 
     private Object buildVertexId(SeaTunnelRow row, SourceTargetConfig config) {
 
-        String vertexLabelId = client.getVertexLabel(config.getLabel());
+        String vertexLabelId = client.getVertexLabelId(config.getLabel());
         IdStrategy strategy = client.getIdStrategy(config.getLabel());
         if (strategy == null || strategy == IdStrategy.AUTOMATIC) {
             return null;
@@ -177,7 +179,9 @@ public class EdgeMapper implements GraphDataMapper {
                 }
                 return UUID.fromString(String.valueOf(uuidValue));
             default:
-                throw new UnsupportedOperationException("Unsupported IdStrategy: " + strategy);
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                        "Unsupported IdStrategy: " + strategy);
         }
     }
 
@@ -188,7 +192,8 @@ public class EdgeMapper implements GraphDataMapper {
 
             Integer index = fieldsIndex.get(fieldName);
             if (index == null) {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                         String.format(
                                 "Field '%s' specified in id_fields not found in row schema. Available fields: %s",
                                 fieldName, fieldsIndex.keySet()));

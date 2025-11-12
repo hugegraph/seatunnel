@@ -26,6 +26,8 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClien
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.LabelType;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.EdgeMapper;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.GraphDataMapper;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.mapper.VertexMapper;
@@ -136,7 +138,7 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
         }
     }
 
-    private void handleDelete(SeaTunnelRow row) throws IOException {
+    private void handleDelete(SeaTunnelRow row) {
         try {
             buffer.flush();
             if (sinkConfig.getSchemaConfig().getType() == LabelType.VERTEX) {
@@ -155,7 +157,10 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
                 client.deleteEdge(edgeId);
             }
         } catch (Exception e) {
-            throw new IOException(e);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.GRAPH_OPERATION_FAILED,
+                    "Non-retryable error executing graph operation",
+                    e);
         }
     }
 

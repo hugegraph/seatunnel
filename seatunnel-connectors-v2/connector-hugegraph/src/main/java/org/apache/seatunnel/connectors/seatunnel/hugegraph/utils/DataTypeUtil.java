@@ -17,6 +17,9 @@
 
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.utils;
 
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
+
 import org.apache.hugegraph.structure.constant.Cardinality;
 import org.apache.hugegraph.structure.constant.DataType;
 import org.apache.hugegraph.structure.schema.PropertyKey;
@@ -70,7 +73,8 @@ public final class DataTypeUtil {
             case LIST:
                 return parseMultiValues(key, value, dataType, cardinality, dateFormat, timeZone);
             default:
-                throw new AssertionError(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                         String.format("Unsupported cardinality: '%s'", cardinality));
         }
     }
@@ -138,7 +142,8 @@ public final class DataTypeUtil {
             String low = value.substring(16);
             return new UUID(Long.parseUnsignedLong(high, 16), Long.parseUnsignedLong(low, 16));
         }
-        throw new IllegalArgumentException(
+        throw new HugeGraphConnectorException(
+                HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                 String.format(
                         "Failed to convert value(key='%s') " + "'%s'(%s) to UUID",
                         key, rawValue, rawValue.getClass()));
@@ -195,14 +200,16 @@ public final class DataTypeUtil {
             } else if (ACCEPTABLE_FALSE.contains(value)) {
                 return false;
             } else {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                         String.format(
                                 "Failed to convert '%s'(key='%s') to Boolean, "
                                         + "the acceptable boolean strings are %s or %s",
                                 key, rawValue, ACCEPTABLE_TRUE, ACCEPTABLE_FALSE));
             }
         }
-        throw new IllegalArgumentException(
+        throw new HugeGraphConnectorException(
+                HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                 String.format(
                         "Failed to convert value(key='%s') " + "'%s'(%s) to Boolean",
                         key, rawValue, rawValue.getClass()));
@@ -223,7 +230,8 @@ public final class DataTypeUtil {
                 case DOUBLE:
                     return Double.parseDouble(value.toString());
                 default:
-                    throw new AssertionError(
+                    throw new HugeGraphConnectorException(
+                            HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                             String.format(
                                     "Number type only contains Byte, "
                                             + "Integer, Long, Float, Double, "
@@ -231,7 +239,8 @@ public final class DataTypeUtil {
                                     dataType.clazz()));
             }
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                     String.format(
                             "Failed to convert value(key=%s) " + "'%s'(%s) to Number",
                             key, value, value.getClass()),
@@ -283,7 +292,8 @@ public final class DataTypeUtil {
             try {
                 return org.apache.hugegraph.util.DateUtil.parse(s);
             } catch (Exception e) {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                         String.format(
                                 "Failed to convert string value(key='%s') '%s' to Date "
                                         + "using HugeGraph DateUtil.",
@@ -291,8 +301,8 @@ public final class DataTypeUtil {
                         e);
             }
         }
-
-        throw new IllegalArgumentException(
+        throw new HugeGraphConnectorException(
+                HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                 String.format(
                         "Failed to convert value(key='%s') " + "'%s'(%s) to Date",
                         key, value, value.getClass()));
@@ -311,8 +321,10 @@ public final class DataTypeUtil {
                 zoneId = ZoneId.systemDefault();
             }
         } catch (Exception e) {
-            throw new IllegalArgumentException(
-                    String.format("Invalid timeZone string provided: '%s'", timeZone), e);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                    String.format("Invalid timeZone string provided: '%s'", timeZone),
+                    e);
         }
 
         if (value instanceof LocalDateTime) {
@@ -332,8 +344,10 @@ public final class DataTypeUtil {
                 try {
                     return new Date(Long.parseLong(strValue));
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException(
-                            String.format("Invalid timestamp value '%s'", value), e);
+                    throw new HugeGraphConnectorException(
+                            HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                            String.format("Invalid timestamp value '%s'", value),
+                            e);
                 }
             }
 
@@ -342,7 +356,8 @@ public final class DataTypeUtil {
                 try {
                     return new Date(Long.parseLong(strValue));
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException(
+                    throw new HugeGraphConnectorException(
+                            HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                             "Date format must be provided to parse a date string that is not a timestamp.",
                             e);
                 }
@@ -354,14 +369,16 @@ public final class DataTypeUtil {
                 ZonedDateTime zdt = ldt.atZone(zoneId);
                 return Date.from(zdt.toInstant());
             } catch (Exception e) {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                         String.format(
                                 "Failed to parse date string '%s' with format '%s'",
                                 value, dateFormat),
                         e);
             }
         }
-        throw new IllegalArgumentException(
+        throw new HugeGraphConnectorException(
+                HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                 String.format(
                         "Failed to convert value(key='%s') " + "'%s'(%s) to Date",
                         key, value, value.getClass()));

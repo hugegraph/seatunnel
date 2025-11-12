@@ -25,8 +25,9 @@ import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.HugeGraphSinkC
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig.LabelType;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
 
-import org.apache.hugegraph.driver.SchemaManager;
 import org.apache.hugegraph.structure.constant.Cardinality;
 import org.apache.hugegraph.structure.constant.DataType;
 import org.apache.hugegraph.structure.schema.EdgeLabel;
@@ -58,44 +59,46 @@ public final class SchemaValidator {
             } else if (schemaConfig.getType() == LabelType.EDGE) {
                 validateEdge(schemaConfig);
             } else {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                         "Unsupported schema type: " + schemaConfig.getType());
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw e;
         } finally {
             client.close();
         }
     }
 
     private void validateVertex(SchemaConfig schemaConfig) {
-        SchemaManager schema = this.client.getSchema();
         String label = schemaConfig.getLabel();
-        VertexLabel vertexLabel = schema.getVertexLabel(label);
+        VertexLabel vertexLabel = this.client.getVertexLabel(label);
         if (vertexLabel == null) {
-            throw new IllegalArgumentException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                     String.format("Vertex label '%s' does not exist in HugeGraph.", label));
         }
-        validateLabelProperties(schema, label, schemaConfig, vertexLabel.properties());
+        validateLabelProperties(label, schemaConfig, vertexLabel.properties());
     }
 
     private void validateEdge(SchemaConfig schemaConfig) {
-        SchemaManager schema = this.client.getSchema();
         String label = schemaConfig.getLabel();
-        EdgeLabel edgeLabel = schema.getEdgeLabel(label);
+        EdgeLabel edgeLabel = this.client.getEdgeLabel(label);
         if (edgeLabel == null) {
-            throw new IllegalArgumentException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                     String.format("Edge label '%s' does not exist in HugeGraph.", label));
         }
         validateSourceTarget(schemaConfig, edgeLabel);
-        validateLabelProperties(schema, label, schemaConfig, edgeLabel.properties());
+        validateLabelProperties(label, schemaConfig, edgeLabel.properties());
     }
 
     private void validateSourceTarget(SchemaConfig schemaConfig, EdgeLabel edgeLabel) {
         String label = schemaConfig.getLabel();
         String schemaSource = edgeLabel.sourceLabel();
         if (!schemaSource.equals(schemaConfig.getSourceConfig().getLabel())) {
-            throw new IllegalArgumentException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                     String.format(
                             "EdgeLabel[%s] sourceLabel mismatch: schema=%s, config=%s",
                             label, schemaSource, schemaConfig.getSourceConfig()));
@@ -103,10 +106,11 @@ public final class SchemaValidator {
 
         String schemaTarget = edgeLabel.targetLabel();
         if (!schemaTarget.equals(schemaConfig.getTargetConfig().getLabel())) {
-            throw new IllegalArgumentException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                     String.format(
-                            "EdgeLabel[%s] targetLabel mismatch: schema=%s, config=%s",
-                            label, schemaTarget, schemaConfig.getTargetConfig()));
+                            "EdgeLabel[%s] sourceLabel mismatch: schema=%s, config=%s",
+                            label, schemaSource, schemaConfig.getSourceConfig()));
         }
     }
 
@@ -114,10 +118,7 @@ public final class SchemaValidator {
      * Validates if the properties from SeaTunnelRowType are compatible with the HugeGraph schema.
      */
     private void validateLabelProperties(
-            SchemaManager schema,
-            String label,
-            SchemaConfig schemaConfig,
-            Set<String> hugegraphProperties) {
+            String label, SchemaConfig schemaConfig, Set<String> hugegraphProperties) {
 
         MappingConfig mappingConfig = schemaConfig.getMapping();
         Map<String, String> fieldMapping =
@@ -132,19 +133,21 @@ public final class SchemaValidator {
 
             // 1. Check if the property exists in HugeGraph
             if (!hugegraphProperties.contains(propertyName)) {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                         String.format(
                                 "Property '%s' for label '%s' is defined in the connector config, but does not exist in the HugeGraph schema.",
                                 propertyName, label));
             }
 
             // 2. Check for data type compatibility
-            PropertyKey propertyKey = schema.getPropertyKey(propertyName);
+            PropertyKey propertyKey = this.client.getPropertyKey(propertyName);
             DataType hugeGraphType = propertyKey.dataType();
             Cardinality cardinality = propertyKey.cardinality();
 
             if (!isCompatible(seaTunnelType, hugeGraphType, cardinality)) {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                         String.format(
                                 "Data type mismatch for property '%s' on label '%s'. "
                                         + "SeaTunnel type '%s' is not compatible with HugeGraph type '%s'.",
@@ -183,7 +186,7 @@ public final class SchemaValidator {
                     return false;
                 }
             case MAP:
-            case DECIMAL: // Decimal is mapped to TEXT to preserve precision
+            case DECIMAL:
             case ROW:
             case TIME:
             case NULL:

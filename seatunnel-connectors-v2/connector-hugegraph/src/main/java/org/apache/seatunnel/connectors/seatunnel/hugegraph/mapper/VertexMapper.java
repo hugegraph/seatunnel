@@ -21,6 +21,8 @@ import org.apache.seatunnel.api.table.type.SeaTunnelRow;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.MappingConfig;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.config.SchemaConfig;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.DataTypeUtil;
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.utils.E;
 
@@ -50,7 +52,7 @@ public class VertexMapper implements GraphDataMapper {
         this.schemaConfig = schemaConfig;
         this.mappingConfig = getMappingConfig();
         this.client = client;
-        this.labelId = client.getVertexLabel(schemaConfig.getLabel());
+        this.labelId = client.getVertexLabelId(schemaConfig.getLabel());
         this.fieldsIndex = fieldsIndex;
         this.propertyKeyCache = getPropertyKeyCache();
     }
@@ -117,6 +119,7 @@ public class VertexMapper implements GraphDataMapper {
 
             vertex.property(propertyName, getMappedValue(fieldValue));
         }
+
         return vertex;
     }
 
@@ -173,7 +176,9 @@ public class VertexMapper implements GraphDataMapper {
                 }
                 return UUID.fromString(String.valueOf(uuidValue));
             default:
-                throw new UnsupportedOperationException("Unsupported IdStrategy: " + strategy);
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                        "Unsupported IdStrategy: " + strategy);
         }
     }
 
@@ -184,7 +189,8 @@ public class VertexMapper implements GraphDataMapper {
 
             Integer index = fieldsIndex.get(fieldName);
             if (index == null) {
-                throw new IllegalArgumentException(
+                throw new HugeGraphConnectorException(
+                        HugeGraphConnectorErrorCode.INVALID_GRAPH_SCHEMA,
                         String.format(
                                 "Field '%s' specified in id_fields not found in row schema. Available fields: %s",
                                 fieldName, fieldsIndex.keySet()));

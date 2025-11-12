@@ -18,6 +18,8 @@
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.buffer;
 
 import org.apache.seatunnel.connectors.seatunnel.hugegraph.client.HugeGraphClient;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
 
 import org.apache.hugegraph.structure.GraphElement;
 import org.apache.hugegraph.structure.graph.Edge;
@@ -82,7 +84,9 @@ public class BatchBuffer implements AutoCloseable {
     public synchronized void add(GraphElement element) throws IOException {
         checkFlushException();
         if (closed) {
-            throw new IOException("BatchBuffer is already closed.");
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.BUFFER_ADD_FAILED,
+                    "BatchBuffer is already closed.");
         }
 
         try {
@@ -91,7 +95,8 @@ public class BatchBuffer implements AutoCloseable {
                 doFlush();
             }
         } catch (Exception e) {
-            throw new IOException("Failed to add element and flush", e);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.GRAPH_OPERATION_FAILED, e);
         }
     }
 
@@ -103,7 +108,7 @@ public class BatchBuffer implements AutoCloseable {
         doFlush();
     }
 
-    private void doFlush() throws IOException {
+    private void doFlush() {
         if (buffer.isEmpty()) {
             return;
         }
@@ -124,7 +129,8 @@ public class BatchBuffer implements AutoCloseable {
             buffer.clear();
         } catch (Exception e) {
             LOG.error("Failed to write batch data to HugeGraph", e);
-            throw new IOException("Failed to write batch data to HugeGraph", e);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.GRAPH_OPERATION_FAILED, e.getMessage(), e);
         }
     }
 
@@ -151,16 +157,16 @@ public class BatchBuffer implements AutoCloseable {
                 Thread.currentThread().interrupt();
             }
         }
-
         LOG.info("Closing BatchBuffer, performing final flush...");
         flush();
         checkFlushException();
         LOG.info("BatchBuffer closed.");
     }
 
-    private void checkFlushException() throws IOException {
+    private void checkFlushException() {
         if (flushException != null) {
-            throw new IOException("An error occurred during asynchronous flush", flushException);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ASYNCHRONOUS_FLUSH_FAILED, flushException);
         }
     }
 }

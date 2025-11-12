@@ -17,6 +17,9 @@
 
 package org.apache.seatunnel.connectors.seatunnel.hugegraph.utils;
 
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorErrorCode;
+import org.apache.seatunnel.connectors.seatunnel.hugegraph.exception.HugeGraphConnectorException;
+
 import javax.annotation.Nullable;
 
 import java.util.Collection;
@@ -25,33 +28,42 @@ public final class E {
 
     public static void checkNotNull(Object object, String elem) {
         if (object == null) {
-            throw new NullPointerException(String.format("The '%s' can't be null", elem));
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                    String.format("The '%s' can't be null", elem));
         }
     }
 
     public static void checkNotNull(Object object, String elem, String owner) {
         if (object == null) {
-            throw new NullPointerException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                     String.format("The '%s' of '%s' can't be null", elem, owner));
         }
     }
 
     public static void checkNotEmpty(Collection<?> collection, String elem) {
         if (collection == null) {
-            throw new NullPointerException(String.format("The '%s' can't be null", elem));
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                    String.format("The '%s' can't be null", elem));
         }
         if (collection.isEmpty()) {
-            throw new IllegalArgumentException(String.format("The '%s' can't be empty", elem));
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
+                    String.format("The '%s' can't be empty", elem));
         }
     }
 
     public static void checkNotEmpty(Collection<?> collection, String elem, String owner) {
         if (collection == null) {
-            throw new NullPointerException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                     String.format("The '%s' of '%s' can't be null", elem, owner));
         }
         if (collection.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT,
                     String.format("The '%s' of '%s' can't be empty", elem, owner));
         }
     }
@@ -63,7 +75,8 @@ public final class E {
                     (message == null || args == null || args.length == 0)
                             ? (message != null ? message : "")
                             : String.format(message, args);
-            throw new IllegalArgumentException(formattedMessage);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT, formattedMessage);
         }
     }
 
@@ -79,7 +92,8 @@ public final class E {
                     (message == null || args == null || args.length == 0)
                             ? (message != null ? message : "")
                             : String.format(message, args);
-            throw new IllegalStateException(formattedMessage);
+            throw new HugeGraphConnectorException(
+                    HugeGraphConnectorErrorCode.ILLEGAL_CONFIG_ARGUMENT, formattedMessage);
         }
     }
 }
