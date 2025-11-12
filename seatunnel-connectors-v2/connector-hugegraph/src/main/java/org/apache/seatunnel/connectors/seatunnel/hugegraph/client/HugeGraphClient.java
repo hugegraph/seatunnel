@@ -194,7 +194,7 @@ public final class HugeGraphClient {
     }
 
     public void writeEdge(Edge edge) {
-        executeGraphOperation(graph -> graph.addVertex(edge));
+        executeGraphOperation(graph -> graph.addEdge(edge));
     }
 
     public void deleteVertex(Object vertexId) {
