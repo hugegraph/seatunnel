@@ -113,8 +113,11 @@ public class HugeGraphSinkWriter extends AbstractSinkWriter<SeaTunnelRow, Void>
                 handleUpsert(row);
                 break;
             case DELETE:
-            case UPDATE_BEFORE:
                 handleDelete(row);
+                break;
+            case UPDATE_BEFORE:
+                // The huge-client natively supports upsert operations for property updates, so
+                // there is no need to handle this data manually.
                 break;
             default:
                 LOG.warn("Unsupported row kind: {}", row.getRowKind());
