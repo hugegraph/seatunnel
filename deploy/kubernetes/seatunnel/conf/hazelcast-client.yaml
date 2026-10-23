@@ -16,7 +16,7 @@
 #
 
 hazelcast-client:
-  cluster-name: {{ include "seatunnel.fullname" . }}
+  cluster-name: {{ include "seatunnel.fullname" . | quote }}
   properties:
     hazelcast.logging.type: log4j2
   connection-strategy:
@@ -24,4 +24,4 @@ hazelcast-client:
       cluster-connect-timeout-millis: 3000
   network:
     cluster-members:
-      - {{ include "seatunnel.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:5801
+      - {{ include "seatunnel.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:5801

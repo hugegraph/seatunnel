@@ -16,7 +16,7 @@
 #
 
 hazelcast:
-  cluster-name: {{ include "seatunnel.fullname" . }}
+  cluster-name: {{ include "seatunnel.fullname" . | quote }}
   network:
     rest-api:
       # Disabled by default to mirror the standalone config (config/hazelcast.yaml).
@@ -31,7 +31,7 @@ hazelcast:
     join:
       kubernetes:
         enabled: true
-        service-dns: {{ include "seatunnel.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+        service-dns: {{ include "seatunnel.fullname" . }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}
         service-port: 5801
     port:
       auto-increment: false

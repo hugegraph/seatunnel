@@ -15,19 +15,19 @@
 # limitations under the License.
 #
 
-# use for hazelcast cluster join
+# Upstream DNS discovery, including Pods that are still bootstrapping.
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "seatunnel.fullname" . }}
+  name: {{ include "seatunnel.fullname" . | quote }}
   labels:
     {{- include "seatunnel.common.labels" . | nindent 4 }}
-  namespace: {{ .Values.namespace }}
 spec:
-  type: ClusterIP
   clusterIP: None
+  publishNotReadyAddresses: true
   ports:
-    - name: "hazelcast-port"
+    - name: hazelcast-port
       port: 5801
+      targetPort: hazelcast-port
   selector:
-    {{- include "seatunnel.common.labels" . | nindent 4 }}
+    {{- include "seatunnel.selectorLabels" . | nindent 4 }}

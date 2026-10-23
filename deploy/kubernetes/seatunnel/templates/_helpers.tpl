@@ -15,62 +15,83 @@
 # limitations under the License.
 #
 
-{{/* vim: set filetype=mustache: */}}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
 {{- define "seatunnel.fullname" -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- default (printf "%s-seatunnel" .Release.Name) .Values.fullnameOverride | trunc 55 | trimSuffix "-" -}}
 {{- end -}}
 
-{{/*
-Create default docker images' fullname.
-*/}}
-{{- define "seatunnel.image.fullname.master" -}}
-{{- .Values.image.registry }}:{{ .Values.image.tag | default .Chart.AppVersion -}}
-{{- end -}}
-{{- define "seatunnel.image.fullname.worker" -}}
-{{- .Values.image.registry }}:{{ .Values.image.tag | default .Chart.AppVersion -}}
+{{- define "seatunnel.selectorLabels" -}}
+app.kubernetes.io/name: seatunnel
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
+app.kubernetes.io/part-of: seatunnel
 {{- end -}}
 
-{{/*
-Create a default common labels.
-*/}}
 {{- define "seatunnel.common.labels" -}}
-app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-app.kubernetes.io/version: {{ .Chart.AppVersion }}
-
+{{ include "seatunnel.selectorLabels" . }}
+app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | quote }}
 {{- end -}}
 
-{{/*
-Create a master labels.
-*/}}
-{{- define "seatunnel.master.labels" -}}
-app.kubernetes.io/name: {{ include "seatunnel.fullname" . }}-master
-app.kubernetes.io/component: master
-{{ include "seatunnel.common.labels" . }}
+{{- define "seatunnel.image" -}}
+{{- $reference := .Values.image.registry -}}
+{{- $registry := trimSuffix "/" (.Values.global.imageRegistry | default "") -}}
+{{- $first := first (splitList "/" $reference) -}}
+{{- $qualified := and (contains "/" $reference) (or (contains "." $first) (contains ":" $first) (eq $first "localhost")) -}}
+{{- if and $registry (not $qualified) -}}
+{{- $reference = printf "%s/%s" $registry $reference -}}
+{{- end -}}
+{{- if .Values.image.digest -}}
+{{- printf "%s@%s" $reference .Values.image.digest -}}
+{{- else -}}
+{{- printf "%s:%s" $reference (.Values.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
 {{- end -}}
 
-{{/*
-Create a worker labels.
-*/}}
-{{- define "seatunnel.worker.labels" -}}
-app.kubernetes.io/name: {{ include "seatunnel.fullname" . }}-worker
-app.kubernetes.io/component: worker
-{{ include "seatunnel.common.labels" . }}
-{{- end -}}
-
-{{/*
-Get the ConfigMap name - either existing or the one to be created.
-*/}}
 {{- define "seatunnel.configMapName" -}}
 {{- if .Values.configMap.create -}}
 {{- include "seatunnel.fullname" . }}-configs
 {{- else -}}
-{{- .Values.configMap.existingConfigMapName }}
+{{- required "seatunnel.configMap.existingConfigMapName is required when configMap.create=false" .Values.configMap.existingConfigMapName -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "seatunnel.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{- default (include "seatunnel.fullname" .) .Values.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.serviceAccount.name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "seatunnel.masterReplicas" -}}
+{{- $replicas := ternary 1 2 (eq .Values.mode "standalone") -}}
+{{- if ne (.Values.master.replicas | toString) "<nil>" -}}
+{{- $replicas = int .Values.master.replicas -}}
+{{- end -}}
+{{- if and (eq .Values.mode "standalone") (ne (int $replicas) 1) -}}
+{{- fail "seatunnel.master.replicas must be 1 in standalone mode" -}}
+{{- end -}}
+{{- $replicas -}}
+{{- end -}}
+
+{{/* Render the same final files into ConfigMap data and rollout checksum. */}}
+{{- define "seatunnel.configData" -}}
+{{- $files := dict -}}
+{{- range $path, $_ := .Files.Glob "conf/*" -}}
+{{- $name := base $path -}}
+{{- $content := tpl ($.Files.Get $path) $ -}}
+{{- if eq $name "seatunnel.yaml" -}}
+{{- $config := fromYaml $content -}}
+{{- $engine := mergeOverwrite $config.seatunnel.engine (deepCopy $.Values.engineConfig) -}}
+{{- $_ := set $engine.http "port" (int $.Values.service.port) -}}
+{{- $_ := set $engine.http "enable-http" true -}}
+{{- $_ := set $engine.http "enable-dynamic-port" false -}}
+{{- $content = toYaml $config -}}
+{{- end -}}
+{{- $_ := set $files $name $content -}}
+{{- end -}}
+{{- range $name, $content := .Values.configMap.data -}}
+{{- $_ := set $files $name (tpl $content $) -}}
+{{- end -}}
+{{- toYaml $files -}}
 {{- end -}}

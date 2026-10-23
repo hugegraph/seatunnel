@@ -15,30 +15,13 @@
 # limitations under the License.
 #
 
-
 apiVersion: v2
 name: seatunnel-helm
-description: SeaTunnel is a next-generation, high-performance, distributed data integration tool, capable of synchronizing vast amounts of data daily. It's trusted by numerous companies for its efficiency and stability.
-home: https://seatunnel.apache.org
-icon: https://seatunnel.apache.org/image/logo.png
-keywords:
-  - seatunnel
-  - integration
-# A chart can be either an 'application' or a 'library' chart.
-#
-# Application charts are a collection of templates that can be packaged into versioned archives
-# to be deployed.
-#
-# Library charts provide useful utilities or functions for the chart developer. They're included as
-# a dependency of application charts to inject those utilities and functions into the rendering
-# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+description: Optional SeaTunnel engine, adapted from the Apache SeaTunnel Helm chart
 type: application
-# This is the chart version. This version number should be incremented each time you make changes
-# to the chart and its templates, including the app version.
-version: 3.0.1
-
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application.
-# It doubles as the default image tag (templates/_helpers.tpl), so it must reference a published
-# apache/seatunnel image, not an in-development version: helm-chart-check pulls it directly.
-appVersion: 3.0.0
+version: 3.0.1-hugegraph.1
+appVersion: "3.0.0"
+kubeVersion: ">=1.23.0-0"
+home: https://seatunnel.apache.org
+sources:
+  - https://github.com/apache/seatunnel/tree/14a27ac26a0a71b56722f86cdf8ec2779094ceaf/deploy/kubernetes/seatunnel

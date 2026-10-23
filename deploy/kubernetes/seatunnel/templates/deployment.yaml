@@ -1,0 +1,149 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+{{- range $role := list "master" "worker" }}
+{{- if or (eq $role "master") (eq $.Values.mode "cluster") }}
+{{- $values := index $.Values $role }}
+{{- $standalone := and (eq $role "master") (eq $.Values.mode "standalone") }}
+{{- $nodeRole := ternary "master_and_worker" $role $standalone }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "seatunnel.fullname" $ }}-{{ $role }}
+  labels:
+    {{- include "seatunnel.common.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $role }}
+spec:
+  replicas: {{ if eq $role "master" }}{{ include "seatunnel.masterReplicas" $ }}{{ else }}{{ $values.replicas }}{{ end }}
+  strategy:
+    {{- if $standalone }}
+    type: Recreate
+    {{- else }}
+    type: {{ $values.strategy.type }}
+    {{- if eq $values.strategy.type "RollingUpdate" }}
+    {{- with $values.strategy.rollingUpdate }}
+    rollingUpdate:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- include "seatunnel.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $role }}
+  template:
+    metadata:
+      labels:
+        {{- include "seatunnel.common.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $role }}
+      annotations:
+        {{- with $values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if $.Values.configMap.create }}
+        checksum/config: {{ include "seatunnel.configData" $ | sha256sum }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "seatunnel.serviceAccountName" $ | quote }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ $.Values.terminationGracePeriodSeconds }}
+      {{- with $.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ . | quote }}
+      {{- end }}
+      containers:
+        - name: {{ $role }}
+          image: {{ include "seatunnel.image" $ | quote }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          {{- if $values.command }}
+          command:
+            {{- toYaml $values.command | nindent 12 }}
+          {{- else }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Preserve upstream JVM setup and make Java receive termination signals.
+              java() { exec "$(type -P java)" "$@"; }
+              export -f java
+              exec /bin/bash /opt/seatunnel/bin/seatunnel-cluster.sh -r {{ $nodeRole }}
+          {{- end }}
+          ports:
+            - name: hazelcast-port
+              containerPort: 5801
+            - name: master-port
+              containerPort: {{ $.Values.service.port }}
+          {{- with $.Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- range $probe := list "startupProbe" "readinessProbe" "livenessProbe" }}
+          {{- with index $values $probe }}
+          {{ $probe }}:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- with $.Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- range $path, $_ := $.Files.Glob "conf/*" }}
+            - name: seatunnel-configs
+              mountPath: /opt/seatunnel/config/{{ base $path }}
+              subPath: {{ base $path }}
+            {{- end }}
+            {{- range $name, $_ := $.Values.configMap.data }}
+            {{- if not ($.Files.Glob (printf "conf/%s" $name)) }}
+            - name: seatunnel-configs
+              mountPath: /opt/seatunnel/config/{{ $name }}
+              subPath: {{ $name }}
+            {{- end }}
+            {{- end }}
+            {{- with $.Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: seatunnel-configs
+          configMap:
+            name: {{ include "seatunnel.configMapName" $ | quote }}
+        {{- with $.Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+{{- end }}
+{{- end }}

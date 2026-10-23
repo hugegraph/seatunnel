@@ -4,6 +4,16 @@
 
 ## dev
 
+### Fork Helm Chart 的资源标识
+
+本 fork 的 `seatunnel-helm` Chart 新增单机模式，并为 SeaTunnel 单独设置资源名称和选择器。
+release 名为 `seatunnel` 时，master Service 和 Deployment 现为 `seatunnel-seatunnel-master`；
+默认仍是两个 master、两个 worker 的分离集群。已有快速体验 Deployment 的不可变选择器不同，
+应先停止作业或创建 savepoint，再安装新的 release、更新客户端地址，并重新提交或恢复作业。
+请按照 fork Chart 复核自定义 values，包括单独管理 Ingress，以及使用 `configMap.data`
+覆盖配置。这些变更影响 Helm 部署配置，不改变引擎和连接器 API。
+详见 [Helm 部署](../../getting-started/kubernetes/helm.md)。
+
 ### File Sink：XML 应用 `date_format`、`datetime_format` 和 `time_format`
 
 - **行为变更：文件类 Sink 的 XML 写入器按配置的格式输出 DATE、TIME 和 TIMESTAMP**

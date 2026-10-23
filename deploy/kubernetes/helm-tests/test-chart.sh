@@ -22,21 +22,21 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly CHART_DIR="${SCRIPT_DIR}/../seatunnel"
 readonly RELEASE_NAME="seatunnel-e2e"
 readonly RELEASE_NAMESPACE="seatunnel-e2e"
+readonly SEATUNNEL_FULLNAME="${RELEASE_NAME}-seatunnel"
 readonly REST_RESPONSE="${TMPDIR:-/tmp}/seatunnel-helm-rest-response.json"
 
 render_chart() {
     helm lint --strict "${CHART_DIR}"
     helm template "${RELEASE_NAME}" "${CHART_DIR}" \
         --namespace "${RELEASE_NAMESPACE}" \
+        --set mode=cluster \
         --set master.replicas=1 \
         --set worker.replicas=1 \
         > /dev/null
     helm template "${RELEASE_NAME}" "${CHART_DIR}" \
         --namespace "${RELEASE_NAMESPACE}" \
-        --set ingress.enabled=true \
-        --set ingress.tls.enabled=true \
+        --set mode=standalone \
         --set master.replicas=1 \
-        --set worker.replicas=1 \
         > /dev/null
 }
 
@@ -67,7 +67,7 @@ verify_rest_api() {
 
     for _ in $(seq 1 60); do
         if kubectl --namespace "${RELEASE_NAMESPACE}" exec \
-            "deployment/${RELEASE_NAME}-master" -- \
+            "deployment/${SEATUNNEL_FULLNAME}-master" -- \
             curl --fail --silent --show-error --max-time 5 \
             http://127.0.0.1:8080/system-monitoring-information \
             > "${REST_RESPONSE}" \
@@ -108,13 +108,14 @@ install_chart() {
         --create-namespace \
         --wait \
         --timeout 15m \
+        --set mode=cluster \
         --set master.replicas=1 \
         --set worker.replicas=1
 
     kubectl --namespace "${RELEASE_NAMESPACE}" rollout status \
-        "deployment/${RELEASE_NAME}-master" --timeout=2m
+        "deployment/${SEATUNNEL_FULLNAME}-master" --timeout=2m
     kubectl --namespace "${RELEASE_NAMESPACE}" rollout status \
-        "deployment/${RELEASE_NAME}-worker" --timeout=2m
+        "deployment/${SEATUNNEL_FULLNAME}-worker" --timeout=2m
     verify_rest_api
 }
 

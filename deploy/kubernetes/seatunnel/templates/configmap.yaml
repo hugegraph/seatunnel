@@ -14,18 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 {{- if .Values.configMap.create }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "seatunnel.fullname" . }}-configs
+  name: {{ include "seatunnel.configMapName" . | quote }}
   labels:
-    app.kubernetes.io/name: {{ include "seatunnel.fullname" . }}-configs
-    {{- include "seatunnel.master.labels" . | nindent 4 }}
+    {{- include "seatunnel.common.labels" . | nindent 4 }}
 data:
-  {{- range $path, $_ := .Files.Glob "conf/*" }}
-    {{- base $path | nindent 2 }}: |-
-      {{- tpl ($.Files.Get $path) $ | nindent 4 -}}
-  {{- end }}
+  {{- include "seatunnel.configData" . | nindent 2 }}
 {{- end }}
-

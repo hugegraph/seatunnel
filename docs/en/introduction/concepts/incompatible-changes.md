@@ -5,6 +5,18 @@ You need to check this document before you upgrade to related version.
 
 ## dev
 
+### Fork Helm chart resource identity
+
+The fork's `seatunnel-helm` chart adds standalone mode and scopes resource names
+and selectors to SeaTunnel. For release `seatunnel`, the master Service and
+Deployment are now `seatunnel-seatunnel-master`; the default remains a separated
+cluster with two masters and two workers. Existing quick-start Deployments have
+different immutable selectors: stop or savepoint jobs and install a new release,
+then update client endpoints and resubmit or restore jobs. Review custom values
+against the fork chart, including externally managed Ingress and
+`configMap.data` configuration overrides. These changes affect Helm deployment
+configuration, not engine or connector APIs. See [Helm deployment](../../getting-started/kubernetes/helm.md).
+
 ### File sink: XML applies `date_format`, `datetime_format` and `time_format`
 
 - **Behavior change: the XML writer of the file sinks formats DATE, TIME and TIMESTAMP values with the configured formats**
