@@ -13,7 +13,8 @@ Chart 源码由 [HugeGraph SeaTunnel fork](https://github.com/hugegraph/Seatunne
 fork 中的调整：
 
 - 保留上游分离的 master/worker Deployment，增加单节点混合角色及其所需的
-  `hazelcast.yaml`、`jvm_options`。单机引擎备份数为 0，集群为 1。
+  `hazelcast.yaml`、`jvm_options`。单机运行官方脚本时不传 `-r`，使用其默认混合角色；
+  集群分别传 `-r master` 和 `-r worker`。单机引擎备份数为 0，集群为 1。
 - 为 SeaTunnel 设置独立的资源名称、发现 DNS 和稳定选择器；发现 Service 发布未就绪节点，
   master API 使用 ClusterIP Service，并允许自定义集群 DNS 后缀。
 - 合并重复角色模板，增加探针、配置校验和及退出宽限时间。通过小型 Bash `java` 函数，

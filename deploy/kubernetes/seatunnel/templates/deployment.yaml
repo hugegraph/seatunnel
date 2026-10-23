@@ -19,7 +19,6 @@
 {{- if or (eq $role "master") (eq $.Values.mode "cluster") }}
 {{- $values := index $.Values $role }}
 {{- $standalone := and (eq $role "master") (eq $.Values.mode "standalone") }}
-{{- $nodeRole := ternary "master_and_worker" $role $standalone }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -97,7 +96,7 @@ spec:
               # Preserve upstream JVM setup and make Java receive termination signals.
               java() { exec "$(type -P java)" "$@"; }
               export -f java
-              exec /bin/bash /opt/seatunnel/bin/seatunnel-cluster.sh -r {{ $nodeRole }}
+              exec /bin/bash /opt/seatunnel/bin/seatunnel-cluster.sh{{ if not $standalone }} -r {{ $role }}{{ end }}
           {{- end }}
           ports:
             - name: hazelcast-port

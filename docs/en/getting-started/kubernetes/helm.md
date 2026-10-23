@@ -73,9 +73,9 @@ helm install seatunnel ./deploy/kubernetes/seatunnel --set mode=cluster \
   --set master.replicas=2 --set worker.replicas=2
 ```
 
-Choose one command. Standalone runs `seatunnel-cluster.sh -r master_and_worker`
-with exactly one master Deployment replica and no worker Deployment. Cluster
-uses the upstream `master` and `worker` roles. Configure shared checkpoint
+Choose one command. Standalone runs `seatunnel-cluster.sh` without `-r`, using
+the default hybrid role with exactly one master Deployment replica and no worker
+Deployment. Cluster uses `-r master` and `-r worker`. Configure shared checkpoint
 storage through `engineConfig` before relying on recovery across Pods; the
 default checkpoint path is temporary local storage. Both modes retain the
 Helm chart's Deployment layout.

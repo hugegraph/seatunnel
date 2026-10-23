@@ -71,9 +71,9 @@ helm install seatunnel ./deploy/kubernetes/seatunnel --set mode=cluster \
   --set master.replicas=2 --set worker.replicas=2
 ```
 
-选择其中一种方式。`standalone` 使用官方 `seatunnel-cluster.sh -r master_and_worker`，
-master Deployment 固定为一个副本，不创建 worker Deployment；`cluster` 使用官方
-`master`、`worker` 角色。默认 checkpoint 写入临时本地目录；需要跨 Pod 恢复时，
+选择其中一种方式。`standalone` 运行官方 `seatunnel-cluster.sh`，不传 `-r`，
+使用默认的混合角色。master Deployment 固定为一个副本，不创建 worker Deployment；
+`cluster` 分别使用 `-r master` 和 `-r worker`。默认 checkpoint 写入临时本地目录；需要跨 Pod 恢复时，
 请通过 `engineConfig` 配置共享持久化存储。两种模式均保留 Helm Chart 的 Deployment 部署方式。
 
 此 fork 调整了资源名称和选择器，使 SeaTunnel 能与同一 release 中的其他 Chart 隔离。
